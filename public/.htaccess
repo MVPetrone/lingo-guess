@@ -1,0 +1,12 @@
+# SPA fallback: /daily, /archive and /play are client-side routes. Real files
+# and directories are served as-is, /admin is left to its own .htaccess, and
+# everything else gets index.html so a typed or reloaded route never 404s.
+<IfModule mod_rewrite.c>
+  RewriteEngine On
+  RewriteBase /
+  RewriteCond %{REQUEST_FILENAME} -f [OR]
+  RewriteCond %{REQUEST_FILENAME} -d
+  RewriteRule ^ - [L]
+  RewriteRule ^admin(/|$) - [L]
+  RewriteRule . /index.html [L]
+</IfModule>

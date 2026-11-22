@@ -32,11 +32,14 @@ const server = createServer(async (req, res) => {
     return res.end('Not found')
   }
   let rel = decodeURIComponent(url.pathname.slice(BASE.length)) || 'index.html'
-  const file = normalize(join(DIST, rel))
+  let file = normalize(join(DIST, rel))
   if (!file.startsWith(DIST)) {
     res.writeHead(403)
     return res.end()
   }
+  // Mirrors public/.htaccess: an extensionless path that is not a real file
+  // or directory is a client route (/daily, /archive), so it gets index.html.
+  if (!extname(file) && !(await stat(file).catch(() => null))) file = join(DIST, 'index.html')
   try {
     const info = await stat(file)
     if (!info.isFile()) throw new Error('not a file')
