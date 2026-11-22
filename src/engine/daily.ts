@@ -35,6 +35,13 @@ export function previousDateKey(key: string): string {
   return new Date(Date.UTC(y, m - 1, d - 1)).toISOString().slice(0, 10)
 }
 
+/** A real calendar day as `YYYY-MM-DD` (rejects `2026-02-30`). */
+export function isDateKey(s: unknown): s is string {
+  if (typeof s !== 'string' || !/^\d{4}-\d{2}-\d{2}$/.test(s)) return false
+  const [y, m, d] = s.split('-').map(Number) as [number, number, number]
+  return new Date(Date.UTC(y, m - 1, d)).toISOString().slice(0, 10) === s
+}
+
 /** `2026-11-21` → `21/11/2026`, for the card and the share text. */
 export function formatDateKey(key: string): string {
   const [y, m, d] = key.split('-')
@@ -267,6 +274,38 @@ export function recordDailyResult(
     results: Object.fromEntries(kept.map((d) => [d, all[d] as DailyResult])),
     languages: Object.fromEntries(kept.flatMap((d) => (heard[d] ? [[d, heard[d]]] : []))),
   }
+}
+
+const isCount = (n: unknown): n is number => typeof n === 'number' && Number.isFinite(n) && n >= 0
+const ROSTER = new Set<string>(LANGUAGES.map((l) => l.code))
+
+/**
+ * A stored or synced record, validated field by field; null when the record
+ * itself is unreadable. Bad days are dropped rather than failing the record.
+ */
+export function parseDailyRecord(parsed: unknown): DailyRecord | null {
+  if (typeof parsed !== 'object' || parsed === null) return null
+  const { lastDate, streak, best, results, languages } = parsed as Record<string, unknown>
+  if (!isDateKey(lastDate) || !isCount(streak) || !isCount(best)) return null
+  const clean: Record<string, DailyResult> = {}
+  if (typeof results === 'object' && results !== null) {
+    for (const [date, r] of Object.entries(results)) {
+      if (!isDateKey(date) || typeof r !== 'object' || r === null) continue
+      const { score, correct, total, grid } = r as Record<string, unknown>
+      if (!isCount(score) || !isCount(correct) || !isCount(total)) continue
+      clean[date] = typeof grid === 'string' ? { score, correct, total, grid } : { score, correct, total }
+    }
+  }
+  // Absent in v1. A day with unreadable languages keeps its result and reads
+  // as "languages unknown"; codes no longer in the roster are dropped.
+  const heard: Record<string, LangCode[]> = {}
+  if (typeof languages === 'object' && languages !== null) {
+    for (const [date, codes] of Object.entries(languages)) {
+      if (!clean[date] || !Array.isArray(codes)) continue
+      heard[date] = codes.filter((c): c is LangCode => typeof c === 'string' && ROSTER.has(c))
+    }
+  }
+  return { lastDate, streak, best, results: clean, languages: heard }
 }
 
 /** The streak as of `today`: still alive if the last completed day is today or yesterday. */

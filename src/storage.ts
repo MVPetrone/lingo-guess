@@ -1,15 +1,13 @@
-import { LANGUAGES, type LangCode } from './data/languages.ts'
 import {
   addStamp,
   emptyArchive,
   exportJson,
   importJson,
-  isDateKey,
   mergeArchives,
   stampFromDaily,
   type Archive,
 } from './engine/archive.ts'
-import { previousDateKey, type DailyRecord, type DailyResult } from './engine/daily.ts'
+import { parseDailyRecord, previousDateKey, type DailyRecord } from './engine/daily.ts'
 
 // localStorage can be disabled, full, or throw on access (Safari private mode,
 // sandboxed iframes, blocked cookies). Every call here degrades to "no value".
@@ -95,35 +93,6 @@ const DAILY_KEY_V1 = 'lingo.daily.v1'
 /** v2 adds `languages`, the languages heard each day. */
 const DAILY_KEY = 'lingo.daily.v2'
 
-const isCount = (n: unknown): n is number => typeof n === 'number' && Number.isFinite(n) && n >= 0
-const ROSTER = new Set<string>(LANGUAGES.map((l) => l.code))
-
-function parseDaily(raw: string): DailyRecord | null {
-  const parsed: unknown = JSON.parse(raw)
-  if (typeof parsed !== 'object' || parsed === null) return null
-  const { lastDate, streak, best, results, languages } = parsed as Record<string, unknown>
-  if (!isDateKey(lastDate) || !isCount(streak) || !isCount(best)) return null
-  const clean: Record<string, DailyResult> = {}
-  if (typeof results === 'object' && results !== null) {
-    for (const [date, r] of Object.entries(results)) {
-      if (!isDateKey(date) || typeof r !== 'object' || r === null) continue
-      const { score, correct, total, grid } = r as Record<string, unknown>
-      if (!isCount(score) || !isCount(correct) || !isCount(total)) continue
-      clean[date] = typeof grid === 'string' ? { score, correct, total, grid } : { score, correct, total }
-    }
-  }
-  // Absent in v1. A day with unreadable languages keeps its result and reads
-  // as "languages unknown"; codes no longer in the roster are dropped.
-  const heard: Record<string, LangCode[]> = {}
-  if (typeof languages === 'object' && languages !== null) {
-    for (const [date, codes] of Object.entries(languages)) {
-      if (!clean[date] || !Array.isArray(codes)) continue
-      heard[date] = codes.filter((c): c is LangCode => typeof c === 'string' && ROSTER.has(c))
-    }
-  }
-  return { lastDate, streak, best, results: clean, languages: heard }
-}
-
 /**
  * The Daily Challenge record, or null if none is stored or it is unreadable.
  * A v1 record is migrated on first read (no languages for its days) and
@@ -132,10 +101,10 @@ function parseDaily(raw: string): DailyRecord | null {
 export function loadDaily(): DailyRecord | null {
   try {
     const raw = window.localStorage.getItem(DAILY_KEY)
-    if (raw !== null) return parseDaily(raw)
+    if (raw !== null) return parseDailyRecord(JSON.parse(raw))
     const legacy = window.localStorage.getItem(DAILY_KEY_V1)
     if (legacy === null) return null
-    const migrated = parseDaily(legacy)
+    const migrated = parseDailyRecord(JSON.parse(legacy))
     if (migrated) saveDaily(migrated)
     return migrated
   } catch {
