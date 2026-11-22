@@ -37,6 +37,30 @@ interface Props {
   /** Today's Daily Challenge: its date, the live streak, and the result once done. */
   daily: { date: string; streak: number; result: DailyResult | null }
   onDaily: () => void
+  /** The archive's live streak, distinct languages ever collected, and days stamped. */
+  archive: { streak: number; languages: number; days: number }
+  onArchive: () => void
+}
+
+/** A one-line way into the archive, under the daily card. */
+function ArchiveStrip({ archive, onArchive }: Pick<Props, 'archive' | 'onArchive'>) {
+  const { streak, languages, days } = archive
+  return (
+    <div className="archive-strip" data-testid="archive-strip">
+      <p className="archive-strip__text">
+        <span className="eyebrow archive-strip__label">Your archive</span>
+        <span className="archive-strip__meta">
+          {days === 0
+            ? 'Each finished daily stamps a square'
+            : `${streak}-day streak · ${languages} language${languages === 1 ? '' : 's'} collected`}
+        </span>
+      </p>
+      <button type="button" className="btn btn--ghost btn--sm" onClick={onArchive} data-testid="archive-open">
+        View archive
+        <Icon name="arrow" className="btn__icon" />
+      </button>
+    </div>
+  )
 }
 
 /** The way into the Daily Challenge; once played it reads as done until tomorrow. */
@@ -68,7 +92,17 @@ function DailyCard({ daily, onDaily }: Pick<Props, 'daily' | 'onDaily'>) {
   )
 }
 
-export function StartScreen({ bestScore, pool, excludedCount, onStart, onEditKnown, daily, onDaily }: Props) {
+export function StartScreen({
+  bestScore,
+  pool,
+  excludedCount,
+  onStart,
+  onEditKnown,
+  daily,
+  onDaily,
+  archive,
+  onArchive,
+}: Props) {
   const [difficulty, setDifficulty] = useState<Difficulty>('normal')
   const tooFew = pool.length < MIN_POOL
   const tierFallback = !tooFew && answerTiers(pool, difficulty) !== DIFFICULTY_TIERS[difficulty]
@@ -93,7 +127,10 @@ export function StartScreen({ bestScore, pool, excludedCount, onStart, onEditKno
         </p>
       </header>
 
-      <DailyCard daily={daily} onDaily={onDaily} />
+      <div className="start__daily">
+        <DailyCard daily={daily} onDaily={onDaily} />
+        <ArchiveStrip archive={archive} onArchive={onArchive} />
+      </div>
 
       <fieldset className="levels">
         <legend className="eyebrow levels__legend">Difficulty</legend>

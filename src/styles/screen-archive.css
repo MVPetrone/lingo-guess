@@ -1,0 +1,457 @@
+/* ============================================================================
+   ARCHIVE — the calendar of stamped days, its ways in, and the share card
+   "Share card" is the archive's one amber element. Stamped days speak in
+   surface and hairline, not colour: the flags are the colour. Today's ring is
+   the machine waiting for a reading.
+   ========================================================================== */
+
+/* ---- ways in: start-screen strip, daily end link ----------------------------- */
+.start__daily {
+  display: grid;
+  gap: var(--s-2);
+}
+
+.archive-strip {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--s-3);
+  padding: var(--s-2) var(--s-2) var(--s-2) var(--s-4);
+  border: var(--hairline);
+  border-radius: var(--r-md);
+  background-color: var(--surface-1);
+}
+
+.archive-strip__text {
+  display: grid;
+  min-width: 0;
+}
+
+.archive-strip__label {
+  color: var(--text-3);
+}
+
+.archive-strip__meta {
+  color: var(--text-1);
+  font-size: var(--fs-small);
+}
+
+.archive-strip .btn {
+  flex: none;
+}
+
+.daily-end__links {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: var(--s-2) var(--s-4);
+}
+
+/* ---- screen ------------------------------------------------------------------- */
+.screen--archive {
+  min-height: 100svh;
+  max-width: 520px;
+}
+
+.archive-head {
+  display: grid;
+  gap: var(--s-2);
+}
+
+.archive-head__eyebrow {
+  color: var(--machine);
+}
+
+.archive-head__title {
+  font-size: var(--fs-h1);
+  font-variant-numeric: tabular-nums;
+}
+
+.archive-head__lede {
+  color: var(--text-2);
+}
+
+.archive__cta {
+  width: 100%;
+}
+
+/* ---- month ------------------------------------------------------------------------ */
+.archive-month {
+  display: grid;
+  gap: var(--s-2);
+  padding: var(--s-3);
+}
+
+.archive-pager {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+}
+
+.archive-pager__title {
+  font-size: var(--fs-h3);
+  font-weight: 500;
+  text-align: center;
+}
+
+.archive-pager__btn {
+  display: grid;
+  place-items: center;
+  width: var(--tap-min);
+  height: var(--tap-min);
+  border: 0;
+  border-radius: var(--r-sm);
+  background: none;
+  color: var(--text-1);
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+  transition: var(--t-ui);
+}
+
+@media (hover: hover) {
+  .archive-pager__btn:hover:not(:disabled) {
+    background-color: var(--surface-2);
+  }
+}
+
+.archive-pager__btn:disabled {
+  color: var(--text-off);
+  cursor: not-allowed;
+}
+
+.archive-pager__icon {
+  width: var(--icon);
+  height: var(--icon);
+}
+
+.archive-pager__icon--back {
+  transform: scaleX(-1);
+}
+
+.archive-weekdays,
+.archive-grid {
+  display: grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  gap: var(--s-1);
+}
+
+.archive-weekdays {
+  color: var(--text-3);
+  font-family: var(--font-mono);
+  font-size: var(--fs-telemetry);
+  letter-spacing: var(--tracking-mono);
+  text-align: center;
+}
+
+.archive-month__tally {
+  color: var(--text-3);
+  text-align: center;
+}
+
+/* ---- day cells ---------------------------------------------------------------------
+   Phone budget: a 390px screen leaves ~44px per column, which fits a 2 × 2
+   block of 18px flags under the day number. */
+.archive-cell {
+  position: relative;
+  display: grid;
+  min-width: 0;
+  min-height: 3.5rem;
+  border-radius: var(--r-sm);
+}
+
+.archive-cell__day {
+  color: var(--text-3);
+  font-family: var(--font-mono);
+  font-size: var(--fs-telemetry);
+  font-variant-numeric: tabular-nums;
+  line-height: 1;
+}
+
+.archive-cell--missed {
+  padding: var(--s-1);
+  box-shadow: inset 0 0 0 1px var(--line-faint);
+}
+
+.archive-cell--missed .archive-cell__day {
+  color: var(--text-off);
+}
+
+.archive-cell--future,
+.archive-cell--pad {
+  visibility: hidden;
+}
+
+.archive-cell__btn {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  min-width: 0;
+  padding: var(--s-1);
+  border: 1px solid var(--line);
+  border-radius: inherit;
+  background-color: var(--surface-2);
+  color: var(--text-1);
+  text-align: start;
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+  transition: var(--t-ui);
+}
+
+.archive-cell__top {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 2px;
+}
+
+.archive-cell--played .archive-cell__day {
+  color: var(--text-1);
+}
+
+.archive-cell__more {
+  color: var(--text-3);
+  font-family: var(--font-mono);
+  font-size: 0.625rem;
+  line-height: 1;
+}
+
+.archive-cell__flags {
+  display: grid;
+  grid-template-columns: repeat(2, 18px);
+  gap: 2px;
+}
+
+.archive-cell .archive-cell__flag {
+  width: 18px;
+  border-radius: 2px;
+}
+
+.archive-cell__btn[aria-pressed='true'] {
+  border-color: var(--machine);
+  background-color: var(--caliber-wash);
+}
+
+@media (hover: hover) {
+  .archive-cell__btn:hover {
+    border-color: var(--line-strong);
+    background-color: var(--surface-hover);
+  }
+
+  .archive-cell__btn[aria-pressed='true']:hover {
+    border-color: var(--machine);
+  }
+}
+
+/* The stamp settles in once, staggered across the month; reduced motion
+   zeroes the duration tokens, so it simply appears. */
+.archive-cell--played {
+  animation: archive-stamp var(--dur-3) var(--ease-settle) both;
+  animation-delay: calc(var(--i, 0) * var(--stagger) / 3);
+}
+
+@keyframes archive-stamp {
+  from {
+    opacity: 0;
+    transform: scale(0.86);
+  }
+}
+
+/* Today, unplayed: a ring that breathes. */
+.archive-cell--today .archive-cell__btn {
+  border-color: var(--machine);
+  background-color: transparent;
+}
+
+.archive-cell--today .archive-cell__day {
+  color: var(--machine);
+}
+
+.archive-cell--today::after {
+  content: '';
+  position: absolute;
+  inset: -3px;
+  border: 1px solid var(--machine);
+  border-radius: calc(var(--r-sm) + 3px);
+  pointer-events: none;
+  animation: archive-pulse calc(var(--dur-5) * 2) var(--ease-settle) infinite;
+}
+
+@keyframes archive-pulse {
+  0%,
+  100% {
+    opacity: 0;
+  }
+
+  50% {
+    opacity: 0.7;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .archive-cell--today::after {
+    animation: none;
+    opacity: 0.5;
+  }
+}
+
+/* ---- selected day ------------------------------------------------------------------- */
+.archive-detail {
+  display: grid;
+  gap: var(--s-3);
+  padding: var(--s-4);
+}
+
+.archive-detail__head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--s-2);
+  min-height: var(--tap-min);
+}
+
+.archive-detail__lede {
+  color: var(--text-2);
+  font-size: var(--fs-small);
+}
+
+.archive-detail__langs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--s-2);
+}
+
+.archive-detail__lang {
+  gap: var(--s-2);
+  color: var(--text-1);
+}
+
+.archive-detail__lang .flag {
+  width: 1.25rem;
+}
+
+.archive-detail .stats {
+  text-align: center;
+}
+
+/* ---- footer ---------------------------------------------------------------------------- */
+.archive-foot {
+  display: grid;
+  gap: var(--s-3);
+}
+
+.archive-foot__actions > .btn {
+  white-space: nowrap;
+}
+
+.archive-foot__file {
+  display: none;
+}
+
+.archive-foot__status {
+  color: var(--text-2);
+  font-size: var(--fs-small);
+}
+
+.archive-foot__status:empty {
+  display: none;
+}
+
+.archive-foot__note {
+  color: var(--text-3);
+  font-size: var(--fs-small);
+}
+
+.archive-foot__back {
+  justify-self: center;
+}
+
+/* ---- share card (native modal dialog) -------------------------------------------------- */
+.share-card {
+  width: min(100% - 2 * var(--gutter), 400px);
+  max-height: calc(100svh - 2 * var(--s-4));
+  padding: 0;
+  overflow-y: auto;
+  border: var(--hairline);
+  border-radius: var(--r-lg);
+  background-color: var(--surface-1);
+  color: var(--text-1);
+  box-shadow: var(--shadow-3);
+}
+
+.share-card::backdrop {
+  background-color: color-mix(in srgb, var(--page) 82%, transparent);
+  -webkit-backdrop-filter: blur(6px);
+  backdrop-filter: blur(6px);
+}
+
+.share-card__body {
+  display: grid;
+  justify-items: center;
+  gap: var(--s-4);
+  padding: var(--s-5) var(--s-4) var(--s-4);
+}
+
+.share-card__title {
+  font-size: var(--fs-h3);
+  font-weight: 500;
+}
+
+/* ≤320px wide so a phone shows the card and its buttons without scrolling. */
+.share-card__preview {
+  width: min(100%, 320px);
+  height: auto;
+  aspect-ratio: 4 / 5;
+  border: var(--hairline);
+  border-radius: var(--r-md);
+  background-color: var(--page);
+}
+
+.share-card__actions {
+  width: 100%;
+}
+
+.share-card__actions > .btn {
+  text-decoration: none;
+  white-space: nowrap;
+}
+
+.share-card__actions > [aria-disabled='true'] {
+  opacity: 0.5;
+  pointer-events: none;
+}
+
+.share-card__status {
+  color: var(--text-2);
+  font-size: var(--fs-small);
+}
+
+.share-card__status:empty {
+  display: none;
+}
+
+/* ---- wider screens ---------------------------------------------------------------------- */
+@media (min-width: 48rem) {
+  .archive-month {
+    padding: var(--s-4);
+  }
+
+  .archive-grid {
+    gap: var(--s-2);
+  }
+
+  /* The screen caps at 520px, so cells barely grow: more air, same flags. */
+  .archive-cell {
+    min-height: 4rem;
+  }
+
+  .archive-cell__btn {
+    gap: var(--s-1);
+  }
+
+  .archive__cta {
+    width: auto;
+    justify-self: start;
+    align-self: flex-start;
+  }
+}
