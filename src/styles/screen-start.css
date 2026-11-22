@@ -221,8 +221,10 @@
 .level__glyph {
   display: block;
   width: auto;
-  height: var(--s-5);
-  color: var(--text-2);
+  /* 28px, not the 24px token step: at 16-18px the bars read as a smudge, and
+     the glyph is the card's whole visual argument. */
+  height: 1.75rem;
+  color: var(--text-1);
   transition: var(--t-ui);
 }
 
