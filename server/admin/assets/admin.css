@@ -189,6 +189,15 @@ table.data td.mono { font-family: var(--mono); color: #b9c4d1; }
   padding: 16px; color: var(--muted); font-size: 12.5px;
 }
 
+/* ---------- settings ---------- */
+.settings { max-width: 640px; }
+.settings form button { margin-top: 18px; }
+.settings .notice { margin: 0 0 8px; }
+.settings-status { display: grid; grid-template-columns: max-content 1fr; gap: 8px 16px; margin: 0 0 8px; font-size: 13px; }
+.settings-status dt { color: var(--muted); }
+.settings-status dd { margin: 0; overflow-wrap: anywhere; }
+.settings code { font-family: var(--mono); font-size: 12px; }
+
 @media (max-width: 1080px) {
   .kpis { grid-template-columns: repeat(3, 1fr); }
   .grid, .grid3 { grid-template-columns: 1fr; }
