@@ -1,4 +1,4 @@
-import { useMemo, useRef, useState, type ChangeEvent, type CSSProperties } from 'react'
+import { useMemo, useRef, useState, type ChangeEvent, type CSSProperties, type ReactNode } from 'react'
 import { LANGUAGES, type LangCode } from '../data/languages.ts'
 import {
   archiveStreak,
@@ -9,6 +9,7 @@ import {
   type DayStamp,
 } from '../engine/archive.ts'
 import { track } from '../lib/analytics.ts'
+import { downloadText } from '../share.ts'
 import { archiveFileName, exportArchive, importArchive } from '../storage.ts'
 import { Flag } from './Flag.tsx'
 import { Icon } from './Icon.tsx'
@@ -21,6 +22,14 @@ interface Props {
   onArchiveChange: (archive: ArchiveData) => void
   onPlayDaily: () => void
   onBack: () => void
+  /** Where the record lives, in one honest sentence (sync state). */
+  note: string
+  /** Off while the screen shows the account's copy rather than this device's. */
+  allowImport: boolean
+  /** Inline card under the header (the offer to bring local days in). */
+  banner?: ReactNode
+  /** The signed-in account line at the foot. */
+  account?: ReactNode
 }
 
 /** Mini flags shown in a calendar cell before the rest collapse to `+N`. */
@@ -72,7 +81,7 @@ const plural = (n: number, word: string) => `${n} ${word}${n === 1 ? '' : 's'}`
 type ImportState = { kind: 'idle' } | { kind: 'done'; added: number } | { kind: 'failed' }
 
 /** The Daily Archive: a calendar of stamped days, the month's tally, and the share card. */
-export function Archive({ archive, today, onArchiveChange, onPlayDaily, onBack }: Props) {
+export function Archive({ archive, today, onArchiveChange, onPlayDaily, onBack, note, allowImport, banner, account }: Props) {
   const current = monthOf(today)
   const [view, setView] = useState<Month>(current)
   const [selected, setSelected] = useState<string>(today)
@@ -91,13 +100,7 @@ export function Archive({ archive, today, onArchiveChange, onPlayDaily, onBack }
   const page = (step: number) => setView((v) => fromIndex(monthIndex(v) + step))
 
   const onExport = () => {
-    const url = URL.createObjectURL(new Blob([exportArchive(archive)], { type: 'application/json' }))
-    const a = document.createElement('a')
-    a.href = url
-    a.download = archiveFileName(today, 'json')
-    a.click()
-    // Revoke after the click has been handled, or some browsers cancel the download.
-    setTimeout(() => URL.revokeObjectURL(url), 0)
+    downloadText(archiveFileName(today, 'json'), exportArchive(archive))
     track('archive_export', { days })
   }
 
@@ -139,6 +142,8 @@ export function Archive({ archive, today, onArchiveChange, onPlayDaily, onBack }
           </>
         )}
       </header>
+
+      {banner}
 
       {empty ? (
         <button type="button" className="btn btn--signal btn--xl archive__cta" onClick={onPlayDaily} autoFocus>
@@ -219,30 +224,35 @@ export function Archive({ archive, today, onArchiveChange, onPlayDaily, onBack }
               Export
             </button>
           )}
-          <input
-            ref={fileRef}
-            className="archive-foot__file"
-            type="file"
-            accept="application/json,.json"
-            onChange={onImport}
-            tabIndex={-1}
-            aria-hidden="true"
-            data-testid="archive-import"
-          />
+          {allowImport && (
+            <input
+              ref={fileRef}
+              className="archive-foot__file"
+              type="file"
+              accept="application/json,.json"
+              onChange={onImport}
+              tabIndex={-1}
+              aria-hidden="true"
+              data-testid="archive-import"
+            />
+          )}
         </div>
         <p className="archive-foot__status" role="status">
           {imported.kind === 'done' &&
             (imported.added > 0 ? `Imported ${plural(imported.added, 'new day')}.` : 'Nothing new in that file.')}
           {imported.kind === 'failed' && 'That file isn’t a Lingo Guess archive.'}
         </p>
-        {/* No accounts: say plainly where the record lives. Import is a quiet
-            link here, not a third button — restoring is the rare case. */}
-        <p className="archive-foot__note">
-          <span>Stored on this device only. Export a copy to keep it if you clear your browser or change phone.</span>
-          <button type="button" className="link link--quiet" onClick={() => fileRef.current?.click()}>
-            Import a copy
-          </button>
+        {/* Say plainly where the record lives. Import is a quiet link here,
+            not a third button — restoring is the rare case. */}
+        <p className="archive-foot__note" data-testid="archive-note">
+          <span>{note}</span>
+          {allowImport && (
+            <button type="button" className="link link--quiet" onClick={() => fileRef.current?.click()}>
+              Import a copy
+            </button>
+          )}
         </p>
+        {account}
         <button type="button" className="link link--quiet archive-foot__back" onClick={onBack} data-testid="archive-back">
           Back to menu
         </button>

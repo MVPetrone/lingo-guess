@@ -1,4 +1,5 @@
-import { expect, test, type Page } from '@playwright/test'
+import type { Page } from '@playwright/test'
+import { expect, test } from './fixtures.ts'
 import { LANGUAGES } from '../../src/data/languages.ts'
 import { londonDateKey } from '../../src/engine/daily.ts'
 import { LIVES, ROUNDS } from '../../src/engine/game.ts'
@@ -71,8 +72,10 @@ test('the chip reads All languages with nothing excluded', async ({ page }) => {
   await expect(page.getByTestId('excluded-count')).toHaveText('All languages')
 })
 
-test('no archive strip; the side control opens the archive from the keyboard', async ({ page }) => {
+test('no archive strip; the side control opens the archive from the keyboard', async ({ page, api }) => {
   const errors = trackErrors(page)
+  // The archive is account-only; this test opens it.
+  api.signIn()
   await openStart(page, [])
   await expect(page.getByTestId('archive-strip')).toHaveCount(0)
   const archive = page.getByTestId('archive-open')

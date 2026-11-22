@@ -1,4 +1,5 @@
-import { expect, test, type Page } from '@playwright/test'
+import type { Page } from '@playwright/test'
+import { expect, test } from './fixtures.ts'
 
 /** Uncaught page errors and console errors, so each test can assert there were none. */
 function trackErrors(page: Page): string[] {
@@ -75,8 +76,9 @@ test('archive: side control → /archive, back (browser and in-UI) → /', async
   expect(errors).toEqual([])
 })
 
-test('direct /archive loads in place, and its Back goes home without leaving the site', async ({ page }) => {
+test('direct /archive loads in place, and its Back goes home without leaving the site', async ({ page, api }) => {
   const errors = trackErrors(page)
+  api.signIn()
   await knowNone(page)
   await page.goto('./archive')
   await expect(page.getByTestId('archive')).toBeVisible()

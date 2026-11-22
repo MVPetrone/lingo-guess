@@ -1,4 +1,5 @@
-import { expect, test, type Page } from '@playwright/test'
+import type { Page } from '@playwright/test'
+import { expect, test } from './fixtures.ts'
 import { dailyGuess, dailyNext, formatDateKey, initialDaily, londonDateKey } from '../../src/engine/daily.ts'
 
 /** Uncaught page errors and console errors, so each test can assert there were none. */
@@ -106,8 +107,10 @@ test('keyboard: arrows highlight, Enter picks, Escape closes, Enter submits raw 
   expect(errors).toEqual([])
 })
 
-test('a perfect day: scored, recorded, and shown as done on return', async ({ page, context }) => {
+test('a perfect day: scored, recorded, and shown as done on return', async ({ page, context, api }) => {
   const errors = trackErrors(page)
+  // The archive is account-only; this test visits it after finishing the day.
+  api.signIn()
   await context.grantPermissions(['clipboard-read', 'clipboard-write'])
   const answers = todaysAnswers()
   expect(answers).toHaveLength(10)

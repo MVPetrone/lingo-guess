@@ -1,3 +1,11 @@
+# One canonical origin. The sign-in session cookie is host-scoped, so a page
+# served from www would start a sign-in it could never finish.
+<IfModule mod_rewrite.c>
+  RewriteEngine On
+  RewriteCond %{HTTP_HOST} ^www\.(.+)$ [NC]
+  RewriteRule ^ https://%1%{REQUEST_URI} [R=301,L,QSA]
+</IfModule>
+
 # SPA fallback: /daily, /archive and /play are client-side routes. Real files
 # and directories are served as-is, /admin is left to its own .htaccess, and
 # everything else gets index.html so a typed or reloaded route never 404s.

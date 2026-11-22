@@ -1,4 +1,5 @@
-import { useEffect, useReducer, useRef, useState, type ReactNode } from 'react'
+import { useCallback, useEffect, useReducer, useRef, useState, type ReactNode } from 'react'
+import { AccountRow, ArchiveGate, SyncOffer } from './components/Account.tsx'
 import { Archive } from './components/Archive.tsx'
 import { DailyChallenge } from './components/DailyChallenge.tsx'
 import { EndScreen } from './components/EndScreen.tsx'
@@ -24,12 +25,18 @@ import {
 import { addStamp, stampFromDaily } from './engine/archive.ts'
 import { currentStreak, londonDateKey, type DailyRecord } from './engine/daily.ts'
 import { seedFromString } from './engine/rng.ts'
+import type { SyncPayload } from './engine/syncMerge.ts'
+import { useAccount } from './hooks/useAccount.ts'
 import { useAudio } from './hooks/useAudio.ts'
 import { track, trackPageview } from './lib/analytics.ts'
+import { syncNoteText } from './lib/sync.ts'
 import { AmbientField, ScreenTransition } from './motion/index.ts'
 import { backOrHome, navigate, useRoute } from './router.ts'
+import { downloadText } from './share.ts'
 import {
   appendHeard,
+  archiveFileName,
+  exportArchive,
   loadArchive,
   loadBestScore,
   loadDaily,
@@ -37,6 +44,7 @@ import {
   loadKnown,
   saveArchive,
   saveBestScore,
+  saveDaily,
   saveHeard,
   saveKnown,
 } from './storage.ts'
@@ -101,6 +109,24 @@ export default function App() {
   const [dailyRecord, setDailyRecord] = useState(loadDaily)
   // Built from the daily record on first load, then stamped on each completed day.
   const [archive, setArchive] = useState(() => loadArchive(dailyRecord))
+  // The synced data as of the latest change, ahead of the re-render: the sync
+  // loop reads it between a change and the render that follows.
+  const synced = useRef<SyncPayload>({ archive, daily: dailyRecord })
+  const commit = useCallback((next: Partial<SyncPayload>) => {
+    synced.current = { ...synced.current, ...next }
+    if (next.archive) setArchive(next.archive)
+    if (next.daily !== undefined) setDailyRecord(next.daily)
+  }, [])
+  const account = useAccount(
+    () => synced.current,
+    (merged) => {
+      // A merge only adds days; store it first so a reload sees the same.
+      saveArchive(merged.archive)
+      if (merged.daily) saveDaily(merged.daily)
+      commit(merged)
+    },
+  )
+  const { requestSync } = account
   const pool = LANGUAGES.filter((l) => !known?.includes(l.code))
 
   // The game only exists on /play: leaving the route (browser back) silences
@@ -120,7 +146,9 @@ export default function App() {
   const screenKey = game
     ? game.phase
     : route.name === 'archive'
-      ? 'archive'
+      ? account.account.status === 'in'
+        ? 'archive'
+        : 'archive-gate'
       : known === null || editingKnown
         ? 'know'
         : 'start'
@@ -180,7 +208,8 @@ export default function App() {
     if (!game || game.phase !== 'over' || reportedGame.current === game) return
     reportedGame.current = game
     track('game_over', { score: game.score, difficulty: game.difficulty })
-  }, [game])
+    requestSync(5000)
+  }, [game, requestSync])
 
   /** `replace` when arriving from another sub-route, so back still means home. */
   const start = (difficulty: Difficulty, opts: { replace?: boolean } = {}) => {
@@ -230,13 +259,15 @@ export default function App() {
   // Completing a day stamps the archive. addStamp ignores a date already
   // stamped, so a second finish (or a stale tab) never rewrites the day.
   const recordDaily = (record: DailyRecord, date: string) => {
-    setDailyRecord(record)
+    commit({ daily: record })
     const streak = record.lastDate === date ? record.streak : 1
-    const next = addStamp(archive, stampFromDaily(date, record, record.languages[date] ?? [], streak))
-    if (next !== archive) {
+    const current = synced.current.archive
+    const next = addStamp(current, stampFromDaily(date, record, record.languages[date] ?? [], streak))
+    if (next !== current) {
       saveArchive(next)
-      setArchive(next)
+      commit({ archive: next })
     }
+    requestSync(0)
   }
 
   // Moves between sub-routes replace the entry, so back from any of them is home.
@@ -257,14 +288,56 @@ export default function App() {
     )
   }
 
+  // The archive is a record kept with the account: signed out, the gate.
   if (route.name === 'archive') {
+    const { account: who, sync, notice } = account
+    // Only an explicit "signed out" locks the record. An unreachable backend
+    // (offline, a static preview) must not hide a player's own stamps from
+    // them, so it falls through to the device copy with a plain note.
+    if (who.status === 'out') {
+      return frame(<ArchiveGate account={who} notice={notice} onSignIn={account.signIn} onBack={backOrHome} />)
+    }
+    // Until the player decides on the offer, the screen shows the account's
+    // copy; this device's own days stay in storage untouched.
+    const offer = sync.kind === 'offer' || sync.kind === 'declined' ? sync : null
+    const today = londonDateKey()
     return frame(
       <Archive
-        archive={archive}
-        today={londonDateKey()}
-        onArchiveChange={setArchive}
+        archive={offer ? offer.remote.archive : archive}
+        today={today}
+        onArchiveChange={(next) => {
+          commit({ archive: next })
+          requestSync(0)
+        }}
         onPlayDaily={() => navigate({ name: 'daily' }, { replace: true })}
         onBack={backOrHome}
+        note={
+          who.status === 'in'
+            ? syncNoteText(sync, account.lastSyncedAt)
+            : who.status === 'unavailable'
+              ? 'Sign-in is unavailable right now — this is the copy stored on this device.'
+              : 'Stored on this device only.'
+        }
+        allowImport={!offer}
+        banner={
+          offer && (
+            <SyncOffer
+              state={offer}
+              onAccept={() => void account.acceptOffer()}
+              onDecline={account.declineOffer}
+              onExport={() => downloadText(archiveFileName(today, 'json'), exportArchive(synced.current.archive))}
+            />
+          )
+        }
+        account={
+          <AccountRow
+            name={who.status === 'in' ? who.name : null}
+            email={who.status === 'in' ? who.email : ''}
+            notice={notice}
+            onSignOut={account.signOut}
+            onDelete={account.deleteData}
+          />
+        }
       />,
     )
   }

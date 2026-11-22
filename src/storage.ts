@@ -194,3 +194,55 @@ export function importArchive(current: Archive, raw: string): Archive | null {
 export function archiveFileName(today: string, ext: 'json' | 'png'): string {
   return `lingo-archive-${today}.${ext}`
 }
+
+// ---- account sync markers ------------------------------------------------------
+
+/**
+ * Set once this device's archive has been joined to the signed-in account
+ * (merged in, or found to hold nothing the account lacks). Until then sync
+ * only reads, so local days are never pushed — or hidden — without asking.
+ */
+const SYNC_LINK_KEY = 'lingo.sync.v1'
+
+export function loadSyncLinked(): boolean {
+  try {
+    const raw = window.localStorage.getItem(SYNC_LINK_KEY)
+    return raw !== null && (JSON.parse(raw) as { linked?: unknown } | null)?.linked === true
+  } catch {
+    return false
+  }
+}
+
+export function saveSyncLinked(linked: boolean): void {
+  try {
+    if (linked) window.localStorage.setItem(SYNC_LINK_KEY, JSON.stringify({ linked: true }))
+    else window.localStorage.removeItem(SYNC_LINK_KEY)
+  } catch {
+    // Not persisted: the next visit asks again, which never loses a day.
+  }
+}
+
+/**
+ * When the account last confirmed it holds exactly this device's data (a
+ * push succeeded, or a pull matched). Per tab session only: the copy must
+ * not claim a sync that this visit has not seen.
+ */
+const SYNC_LAST_KEY = 'lingo.sync.last'
+
+export function loadLastSyncedAt(): number | null {
+  try {
+    const n = Number(window.sessionStorage.getItem(SYNC_LAST_KEY))
+    return Number.isFinite(n) && n > 0 ? n : null
+  } catch {
+    return null
+  }
+}
+
+export function saveLastSyncedAt(at: number | null): void {
+  try {
+    if (at === null) window.sessionStorage.removeItem(SYNC_LAST_KEY)
+    else window.sessionStorage.setItem(SYNC_LAST_KEY, String(at))
+  } catch {
+    // Not persisted; the in-memory value still drives the copy.
+  }
+}

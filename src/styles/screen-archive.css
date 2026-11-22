@@ -377,6 +377,55 @@
   justify-self: center;
 }
 
+/* ---- account: the offer card and the signed-in line ------------------------------------ */
+/* Quiet by design: the record is the subject, the account is plumbing. */
+.archive-offer {
+  display: grid;
+  gap: var(--s-3);
+  justify-items: start;
+  padding: var(--s-4);
+}
+
+.archive-offer__lede {
+  color: var(--text-1);
+}
+
+.archive-account {
+  display: grid;
+  gap: var(--s-2);
+  color: var(--text-3);
+  font-size: var(--fs-small);
+}
+
+.archive-account__line {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: var(--s-1) var(--s-2);
+}
+
+.archive-account__name {
+  color: var(--text-2);
+  overflow-wrap: anywhere;
+}
+
+.archive-account__confirm {
+  display: grid;
+  gap: var(--s-2);
+  color: var(--text-2);
+}
+
+.archive-account__actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--s-3);
+}
+
+.archive-account__error {
+  color: var(--text-2);
+}
+
 /* ---- share card (native modal dialog) -------------------------------------------------- */
 .share-card {
   width: min(100% - 2 * var(--gutter), 400px);
