@@ -33,14 +33,13 @@ function initialDailyLanguages(): string[] {
   return codes
 }
 
+/** /daily opens straight into round 1: there is no intro step to tap through. */
 async function openDaily(page: Page) {
-  await page.goto('./?daily=1')
-  await expect(page.getByTestId('daily-intro')).toBeVisible()
-  await page.getByTestId('daily-start').click()
+  await page.goto('./daily')
   await expect(page.getByTestId('round-counter')).toHaveText('1/10')
 }
 
-test('the start screen shows the daily card with today’s date', async ({ page }) => {
+test('the daily card goes straight into round 1', async ({ page }) => {
   const errors = trackErrors(page)
   await page.goto('./')
   await page.getByTestId('know-none').click()
@@ -49,7 +48,9 @@ test('the start screen shows the daily card with today’s date', async ({ page 
   await expect(page.getByTestId('daily-date')).toHaveAttribute('datetime', londonDateKey())
   await expect(card).toContainText('Type it')
   await card.click()
-  await expect(page.getByTestId('daily-intro')).toBeVisible()
+  await expect(page).toHaveURL(/\/daily$/)
+  await expect(page.getByTestId('round-counter')).toHaveText('1/10')
+  await expect(page.getByRole('combobox')).toBeFocused()
   expect(errors).toEqual([])
 })
 
@@ -127,6 +128,9 @@ test('a perfect day: scored, recorded, and shown as done on return', async ({ pa
   await expect(page.getByTestId('daily-share-status')).toHaveText('Copied to clipboard!')
   const shared = await page.evaluate(() => navigator.clipboard.readText())
   expect(shared.split('\n')[0]).toBe(`Lingo Guess Daily ${formatDateKey(londonDateKey())} — 10/10 🔥 1-day streak`)
+  // The link is the real route now, not the legacy query.
+  expect(shared).toContain('127.0.0.1:4173/daily')
+  expect(shared).not.toContain('?daily=1')
 
   const stored = await page.evaluate(() => JSON.parse(localStorage.getItem('lingo.daily.v2') ?? 'null'))
   expect(stored).toMatchObject({ lastDate: londonDateKey(), streak: 1, best: 1 })

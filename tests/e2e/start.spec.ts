@@ -71,14 +71,49 @@ test('the chip reads All languages with nothing excluded', async ({ page }) => {
   await expect(page.getByTestId('excluded-count')).toHaveText('All languages')
 })
 
-test('the archive strip still opens the archive', async ({ page }) => {
+test('no archive strip; the side control opens the archive from the keyboard', async ({ page }) => {
   const errors = trackErrors(page)
   await openStart(page, [])
-  await expect(page.getByTestId('archive-open')).toHaveAccessibleName('View archive')
-  await page.getByTestId('archive-open').click()
+  await expect(page.getByTestId('archive-strip')).toHaveCount(0)
+  const archive = page.getByTestId('archive-open')
+  await expect(archive).toHaveAccessibleName('Archive')
+  await expect(page.locator('.side-rail')).toHaveCSS('position', 'fixed')
+
+  // First tab stop, like a header control; Enter opens it.
+  await page.keyboard.press('Tab')
+  await expect(archive).toBeFocused()
+  await page.keyboard.press('Enter')
+  await expect(page).toHaveURL(/\/archive$/)
   await expect(page.getByTestId('archive')).toBeVisible()
+  // Start screen only.
+  await expect(page.getByTestId('archive-open')).toHaveCount(0)
   expect(errors).toEqual([])
 })
+
+for (const width of [320, 390]) {
+  test(`${width} px: the side control clears the hero`, async ({ page }) => {
+    await page.setViewportSize({ width, height: 844 })
+    await openStart(page, [])
+    const button = (await page.getByTestId('archive-open').boundingBox())!
+    for (const part of ['.hero__mark', '.hero__title', '.hero__lede', '.spec-pills']) {
+      // What is drawn, not the element box: the title's box reserves the corner on purpose.
+      const box = await page.locator(part).evaluate((el) => {
+        const range = document.createRange()
+        range.selectNodeContents(el)
+        const r = el.childNodes.length ? range.getBoundingClientRect() : el.getBoundingClientRect()
+        return { x: r.x, y: r.y, width: r.width, height: r.height }
+      })
+      const overlaps =
+        box.x < button.x + button.width &&
+        button.x < box.x + box.width &&
+        box.y < button.y + button.height &&
+        button.y < box.y + box.height
+      expect(overlaps, `${part} overlaps the archive button`).toBe(false)
+    }
+    expect(button.width).toBe(44)
+    expect(button.height).toBe(44)
+  })
+}
 
 test('phone width: 2×2 cards and no horizontal scroll', async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 })
