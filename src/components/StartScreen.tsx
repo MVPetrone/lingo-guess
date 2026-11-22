@@ -1,31 +1,53 @@
 import { useState } from 'react'
 import type { Language } from '../data/languages.ts'
-import { formatDateKey, type DailyResult } from '../engine/daily.ts'
+import type { DailyResult } from '../engine/daily.ts'
 import type { Difficulty } from '../engine/game.ts'
 import { DIFFICULTY_TIERS, LIVES, MIN_POOL, ROUNDS, answerTiers, optionCountFor } from '../engine/game.ts'
-import { Icon } from './Icon.tsx'
+import { DifficultyGlyph } from './DifficultyGlyph.tsx'
+import { Icon, type IconName } from './Icon.tsx'
 
-const LEVELS: { id: Difficulty; label: string; hint: string }[] = [
-  { id: 'easy', label: 'Easy', hint: 'Big, famous languages · short sentences' },
-  { id: 'normal', label: 'Normal', hint: 'Adds the recognisable ones · longer sentences' },
-  { id: 'hard', label: 'Hard', hint: 'Includes confusable pairs · rare words' },
-  { id: 'expert', label: 'Expert', hint: 'Confusable languages only · 5 choices · no slow-down' },
+const LEVELS: { id: Difficulty; label: string; hint: string; facts: [IconName, string][] }[] = [
+  {
+    id: 'easy',
+    label: 'Easy',
+    hint: 'Big, famous languages · short sentences',
+    facts: [
+      ['star', 'Famous'],
+      ['short-clips', 'Short clips'],
+    ],
+  },
+  {
+    id: 'normal',
+    label: 'Normal',
+    hint: 'Adds the recognisable ones · longer sentences',
+    facts: [
+      ['plus-circle', 'Familiar'],
+      ['short-clips', 'Longer clips'],
+    ],
+  },
+  {
+    id: 'hard',
+    label: 'Hard',
+    hint: 'Includes confusable pairs · rare words',
+    facts: [
+      ['look-alikes', 'Look-alikes'],
+      ['diamond', 'Rare words'],
+    ],
+  },
+  {
+    id: 'expert',
+    label: 'Expert',
+    hint: 'Confusable languages only · 5 choices · no slow-down',
+    facts: [
+      ['look-alikes', 'Look-alikes'],
+      ['choices', `${optionCountFor('expert')} choices`],
+      ['speed', 'Full speed'],
+    ],
+  },
 ]
 
-const TIER_DOTS: Record<Difficulty, number> = { easy: 1, normal: 2, hard: 3, expert: 3 }
-
-/** 1–3 lit dots; expert adds the aperture ring around all three. */
-function TierGlyph({ level }: { level: Difficulty }) {
-  const lit = TIER_DOTS[level]
-  return (
-    <svg className="level__glyph" viewBox="0 0 34 14" aria-hidden="true" focusable="false">
-      {[9, 17, 25].map((cx, i) => (
-        <circle key={cx} className={i < lit ? 'is-lit' : ''} cx={cx} cy="7" r="2.6" />
-      ))}
-      {level === 'expert' && <rect className="level__ring" x="1" y="1" width="32" height="12" rx="6" />}
-    </svg>
-  )
-}
+// Fixed to en-GB so a player in Tokyo still sees NOV, never the system locale's month.
+const MONTH = new Intl.DateTimeFormat('en-GB', { month: 'short', timeZone: 'UTC' })
 
 interface Props {
   bestScore: number | null
@@ -42,11 +64,36 @@ interface Props {
   onArchive: () => void
 }
 
+/** Game parameters as three static pills; the visually hidden text spells each one out. */
+function SpecPills({ languages }: { languages: number }) {
+  return (
+    <ul className="spec-pills">
+      <li className="spec-pill" data-testid="pill-rounds">
+        <Icon name="replay" className="spec-pill__icon" />
+        {ROUNDS}
+        <span className="sr-only"> rounds</span>
+      </li>
+      <li className="spec-pill" data-testid="pill-lives">
+        {Array.from({ length: LIVES }, (_, i) => (
+          <Icon key={i} name="heart" className="spec-pill__heart" />
+        ))}
+        <span className="sr-only">{LIVES} lives</span>
+      </li>
+      <li className="spec-pill" data-testid="pill-languages">
+        <Icon name="globe" className="spec-pill__icon" />
+        {languages}
+        <span className="sr-only"> languages in play</span>
+      </li>
+    </ul>
+  )
+}
+
 /** A one-line way into the archive, under the daily card. */
 function ArchiveStrip({ archive, onArchive }: Pick<Props, 'archive' | 'onArchive'>) {
   const { streak, languages, days } = archive
   return (
     <div className="archive-strip" data-testid="archive-strip">
+      <Icon name="calendar" className="archive-strip__icon" />
       <p className="archive-strip__text">
         <span className="eyebrow archive-strip__label">Your archive</span>
         <span className="archive-strip__meta">
@@ -56,10 +103,21 @@ function ArchiveStrip({ archive, onArchive }: Pick<Props, 'archive' | 'onArchive
         </span>
       </p>
       <button type="button" className="btn btn--ghost btn--sm" onClick={onArchive} data-testid="archive-open">
-        View archive
+        <span className="archive-strip__btn-label">View archive</span>
         <Icon name="arrow" className="btn__icon" />
       </button>
     </div>
+  )
+}
+
+/** NOV over 21, from a YYYY-MM-DD key. */
+function DateBadge({ date }: { date: string }) {
+  const [y, m, d] = date.split('-').map(Number) as [number, number, number]
+  return (
+    <time className="date-badge" dateTime={date} data-testid="daily-date">
+      <span className="date-badge__month">{MONTH.format(Date.UTC(y, m - 1, d))}</span>
+      <span className="date-badge__day">{d}</span>
+    </time>
   )
 }
 
@@ -73,18 +131,30 @@ function DailyCard({ daily, onDaily }: Pick<Props, 'daily' | 'onDaily'>) {
       onClick={onDaily}
       data-testid="daily-card"
     >
+      <DateBadge date={date} />
       <span className="daily-card__body">
-        <span className="eyebrow daily-card__eyebrow">
-          Daily Challenge · <time dateTime={date}>{formatDateKey(date)}</time>
-        </span>
-        <span className="daily-card__title">{result ? 'Done for today — come back tomorrow' : 'Type the language'}</span>
+        <span className="eyebrow daily-card__eyebrow">Daily Challenge</span>
         <span className="daily-card__meta">
-          {result && (
-            <span className="daily-card__score">
-              {result.correct}/{result.total} · {result.score} pts
-            </span>
+          {result ? (
+            <>
+              <span className="daily-card__score">
+                {result.correct}/{result.total} · {result.score} pts
+              </span>
+              <span>Back tomorrow</span>
+            </>
+          ) : (
+            <>
+              <span className="daily-card__fact">
+                <Icon name="keyboard" className="daily-card__fact-icon" />
+                Type it
+              </span>
+              <span className="daily-card__fact">
+                <Icon name="users" className="daily-card__fact-icon" />
+                Same for all
+              </span>
+            </>
           )}
-          <span>{streak > 0 ? `🔥 ${streak}-day streak` : `Same ${ROUNDS} clips for everyone, every day`}</span>
+          {streak > 0 && <span className="daily-card__streak">{streak}-day streak</span>}
         </span>
       </span>
       <Icon name={result ? 'check' : 'arrow'} className="daily-card__icon" />
@@ -122,9 +192,7 @@ export function StartScreen({
         />
         <h1 className="hero__title">Lingo Guess</h1>
         <p className="hero__lede">Hear one sentence. Name the language.</p>
-        <p className="eyebrow hero__spec">
-          {ROUNDS} rounds · {LIVES} lives · {pool.length} languages
-        </p>
+        <SpecPills languages={pool.length} />
       </header>
 
       <div className="start__daily">
@@ -136,7 +204,11 @@ export function StartScreen({
         <legend className="eyebrow levels__legend">Difficulty</legend>
         <div className="levels__grid">
           {LEVELS.map((level) => (
-            <label key={level.id} className={`level ${difficulty === level.id ? 'is-selected' : ''}`}>
+            <label
+              key={level.id}
+              className={`level ${difficulty === level.id ? 'is-selected' : ''}`}
+              data-testid={`level-${level.id}`}
+            >
               <input
                 className="control-input"
                 type="radio"
@@ -145,14 +217,22 @@ export function StartScreen({
                 checked={difficulty === level.id}
                 onChange={() => setDifficulty(level.id)}
               />
-              <span className="level__head">
-                <span className="level__label">{level.label}</span>
-                <TierGlyph level={level.id} />
+              <DifficultyGlyph level={level.id} />
+              <span className="level__label">{level.label}</span>
+              <span className="level__facts">
+                {level.facts.map(([icon, text]) => (
+                  <span key={text} className="level__fact">
+                    <Icon name={icon} className="level__fact-icon" />
+                    {text}
+                  </span>
+                ))}
               </span>
-              <span className="level__hint">{level.hint}</span>
             </label>
           ))}
         </div>
+        <p className="levels__hint" data-testid="level-hint">
+          {LEVELS.find((l) => l.id === difficulty)?.hint}
+        </p>
       </fieldset>
 
       {difficulty === 'expert' && !tooFew && (
@@ -185,40 +265,39 @@ export function StartScreen({
           disabled={tooFew}
           aria-describedby={tooFew ? 'pool-guard' : undefined}
         >
-          <Icon name="play" className="btn__icon" />
+          <span className="start__cta-disc">
+            <Icon name="play" className="btn__icon" />
+          </span>
           Start listening
         </button>
       </div>
 
       <footer className="start__foot">
-        <div className="start__known">
-          <button type="button" className="link" onClick={onEditKnown} data-testid="edit-known">
+        <div className="start__foot-row">
+          <button type="button" className="known-pill" onClick={onEditKnown} data-testid="edit-known">
+            <Icon name="check-circle" className="known-pill__icon" />
             Languages I know
+            <span className="known-pill__chip" data-testid="excluded-count">
+              {excludedCount === 0 ? 'All languages' : `${excludedCount} skipped`}
+            </span>
           </button>
-          <span className="start__pool-note" data-testid="excluded-count">
-            {excludedCount === 0
-              ? 'Playing all languages.'
-              : `${excludedCount} language${excludedCount === 1 ? '' : 's'} you know ${excludedCount === 1 ? 'is' : 'are'} left out.`}
-          </span>
-        </div>
-        <div className="start__telemetry">
           {bestScore !== null && (
-            <p className="readout">
-              <span className="eyebrow">
-                Best<span className="sr-only"> score:</span>
-              </span>{' '}
+            <p className="start__best">
+              <Icon name="trophy" className="start__best-icon" />
+              <span className="sr-only">Best score: </span>
               <span className="readout__value">{bestScore}</span>
             </p>
           )}
-          <p className="eyebrow start__keys">
-            Sound on
-            <span className="touch-only-hide">
-              {' · '}
-              <kbd>1</kbd>–<kbd>{optionCountFor(difficulty)}</kbd> answer · <kbd>R</kbd> replay
-            </span>
-            <span className="touch-only">{' · tap the orb to replay'}</span>
-          </p>
         </div>
+        <p className="eyebrow start__keys">
+          <Icon name="speaker" className="start__keys-icon" />
+          Sound on
+          <span className="touch-only-hide">
+            {' · '}
+            <kbd>1</kbd>–<kbd>{optionCountFor(difficulty)}</kbd> answer · <kbd>R</kbd> replay
+          </span>
+          <span className="touch-only">{' · tap the orb to replay'}</span>
+        </p>
       </footer>
     </main>
   )
