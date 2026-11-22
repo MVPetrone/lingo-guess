@@ -38,7 +38,7 @@ $csrf = csrf_token();
   <a href="/admin/activity.php">Activity</a>
   <a class="soon" title="Next milestone">Contacts</a>
   <a class="soon" title="Next milestone">Pipeline</a>
-  <a class="soon" title="Next milestone">Settings</a>
+  <a href="/admin/settings.php">Settings</a>
 </nav>
 
 <main class="wrap">

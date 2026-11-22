@@ -92,6 +92,29 @@ function migrate(PDO $pdo): void
             detail TEXT,
             ip_hash TEXT
         );
+
+        CREATE TABLE IF NOT EXISTS players (
+            id               INTEGER PRIMARY KEY,
+            google_sub       TEXT NOT NULL UNIQUE,
+            email            TEXT NOT NULL,
+            name             TEXT,
+            picture          TEXT,
+            created_at       INTEGER NOT NULL,
+            last_login       INTEGER,
+            data_json        TEXT,
+            data_updated_at  INTEGER NOT NULL DEFAULT 0
+        );
+
+        CREATE TABLE IF NOT EXISTS sessions (
+            id         TEXT PRIMARY KEY,
+            player_id  INTEGER NOT NULL REFERENCES players(id) ON DELETE CASCADE,
+            created_at INTEGER NOT NULL,
+            last_seen  INTEGER NOT NULL,
+            ip_hash    TEXT,
+            ua         TEXT
+        );
+
+        CREATE INDEX IF NOT EXISTS idx_sessions_player ON sessions(player_id);
         SQL);
 }
 
@@ -154,6 +177,7 @@ function prune_old_data(int $keepDays = 400): void
         $pdo->prepare('DELETE FROM events WHERE ts < ?')->execute([$cutoff]);
         $pdo->prepare('DELETE FROM login_attempts WHERE ts < ?')->execute([time() - 7 * 86400]);
         $pdo->prepare('DELETE FROM rate_limits WHERE ts < ?')->execute([time() - 86400]);
+        $pdo->prepare('DELETE FROM sessions WHERE created_at < ?')->execute([time() - 90 * 86400]);
     } catch (Throwable $e) {
         // best effort
     }

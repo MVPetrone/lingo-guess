@@ -46,6 +46,8 @@ date_default_timezone_set('UTC');
 require __DIR__ . '/util.php';
 require __DIR__ . '/db.php';
 require __DIR__ . '/auth.php';
+require __DIR__ . '/google.php';
+require __DIR__ . '/session.php';
 
 /** Config array, or null when the app has not been set up yet. */
 function app_config(): ?array
@@ -88,7 +90,9 @@ function security_headers(bool $isJson = false): void
     } else {
         header(
             "Content-Security-Policy: default-src 'none'; script-src 'self'; style-src 'self'; "
-            . "img-src 'self' data:; font-src 'self'; connect-src 'self'; form-action 'self'; "
+            . "img-src 'self' data:; font-src 'self'; connect-src 'self'; "
+            // Sign-in is a top-level redirect to Google, not a script: only form-action widens.
+            . "form-action 'self' https://accounts.google.com; "
             . "frame-ancestors 'none'; base-uri 'none'; object-src 'none'"
         );
         header('Cache-Control: no-store, private');
