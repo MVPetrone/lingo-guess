@@ -22,6 +22,17 @@ function todaysAnswers(): string[] {
   return names
 }
 
+/** Today's language codes in round order, as the archive should record them. */
+function initialDailyLanguages(): string[] {
+  let s = initialDaily(londonDateKey())
+  const codes: string[] = []
+  while (s.game.phase !== 'over') {
+    codes.push(s.game.round.language.code)
+    s = dailyNext(dailyGuess(s, s.game.round.language.name))
+  }
+  return codes
+}
+
 async function openDaily(page: Page) {
   await page.goto('./?daily=1')
   await expect(page.getByTestId('daily-intro')).toBeVisible()
@@ -117,8 +128,19 @@ test('a perfect day: scored, recorded, and shown as done on return', async ({ pa
   const shared = await page.evaluate(() => navigator.clipboard.readText())
   expect(shared.split('\n')[0]).toBe(`Lingo Guess Daily ${formatDateKey(londonDateKey())} — 10/10 🔥 1-day streak`)
 
-  const stored = await page.evaluate(() => JSON.parse(localStorage.getItem('lingo.daily.v1') ?? 'null'))
+  const stored = await page.evaluate(() => JSON.parse(localStorage.getItem('lingo.daily.v2') ?? 'null'))
   expect(stored).toMatchObject({ lastDate: londonDateKey(), streak: 1, best: 1 })
+  const heard = initialDailyLanguages()
+  expect(stored.languages[londonDateKey()]).toEqual(heard)
+
+  // Finishing stamps today's square in the archive, with the day's languages.
+  const archive = await page.evaluate(() => JSON.parse(localStorage.getItem('lingo.archive.v1') ?? 'null'))
+  expect(archive.stamps[londonDateKey()]).toMatchObject({ correct: 10, total: 10, streak: 1, languages: heard })
+  await page.getByTestId('daily-archive').click()
+  await expect(page.getByTestId('archive-streak')).toHaveText('1-day streak')
+  await expect(page.getByTestId('archive-day')).toHaveCount(1)
+  await page.getByTestId('archive-back').click()
+  await page.goto('./?daily=1')
 
   // Back on the menu the card reads as done; reopening shows the result, not a new game.
   await page.getByTestId('daily-back').click()

@@ -31,8 +31,10 @@ import { ClipPlayer } from './Round.tsx'
 
 interface Props {
   record: DailyRecord | null
-  onRecord: (record: DailyRecord) => void
+  /** Called with the updated record and the day it was recorded for. */
+  onRecord: (record: DailyRecord, date: string) => void
   onPlayNormal: () => void
+  onArchive: () => void
   onBack: () => void
 }
 
@@ -47,7 +49,7 @@ function shareUrl(): string {
 }
 
 /** The whole Daily Challenge flow: intro → rounds/reveals → results. */
-export function DailyChallenge({ record, onRecord, onPlayNormal, onBack }: Props) {
+export function DailyChallenge({ record, onRecord, onPlayNormal, onArchive, onBack }: Props) {
   // Fixed for the visit: a game that crosses midnight still counts for the day it began.
   const [today] = useState(() => londonDateKey())
   const [state, setState] = useState<DailyState | null>(null)
@@ -85,10 +87,11 @@ export function DailyChallenge({ record, onRecord, onPlayNormal, onBack }: Props
     // Leaving the final reveal completes the day: record it here, in the event
     // handler, so the engine stays pure.
     if (state.game.phase === 'reveal' && isOver(state.game)) {
+      // The outcome carries the day's languages; the record keeps them for the archive.
       const result = resultOf(state.game)
       const nextRecord = recordDailyResult(record, today, result)
       saveDaily(nextRecord)
-      onRecord(nextRecord)
+      onRecord(nextRecord, today)
       track('daily_complete', { score: result.score, correct: result.correct })
     }
     setState(dailyNext(state))
@@ -117,6 +120,7 @@ export function DailyChallenge({ record, onRecord, onPlayNormal, onBack }: Props
           typed={state?.typed}
           justFinished={state !== null}
           onPlayNormal={onPlayNormal}
+          onArchive={onArchive}
           onBack={onBack}
         />,
       )
@@ -267,6 +271,7 @@ function DailyEnd({
   typed,
   justFinished,
   onPlayNormal,
+  onArchive,
   onBack,
 }: {
   date: string
@@ -277,6 +282,7 @@ function DailyEnd({
   typed?: readonly (string | null)[]
   justFinished: boolean
   onPlayNormal: () => void
+  onArchive: () => void
   onBack: () => void
 }) {
   const [copy, setCopy] = useState<CopyState>('idle')
@@ -394,9 +400,14 @@ function DailyEnd({
         </details>
       )}
 
-      <button type="button" className="link link--quiet end__menu" onClick={onBack} data-testid="daily-back">
-        Back to menu
-      </button>
+      <div className="daily-end__links">
+        <button type="button" className="link daily-end__archive" onClick={onArchive} data-testid="daily-archive">
+          See your archive
+        </button>
+        <button type="button" className="link link--quiet end__menu" onClick={onBack} data-testid="daily-back">
+          Back to menu
+        </button>
+      </div>
     </main>
   )
 }

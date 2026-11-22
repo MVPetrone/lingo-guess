@@ -1,4 +1,5 @@
 import { useEffect, useReducer, useRef, useState, type ReactNode } from 'react'
+import { Archive } from './components/Archive.tsx'
 import { DailyChallenge } from './components/DailyChallenge.tsx'
 import { EndScreen } from './components/EndScreen.tsx'
 import { HUD } from './components/HUD.tsx'
@@ -19,17 +20,20 @@ import {
   type Difficulty,
   type GameState,
 } from './engine/game.ts'
-import { currentStreak, londonDateKey } from './engine/daily.ts'
+import { addStamp, archiveStreak, collectedLanguages, stampFromDaily } from './engine/archive.ts'
+import { currentStreak, londonDateKey, type DailyRecord } from './engine/daily.ts'
 import { seedFromString } from './engine/rng.ts'
 import { useAudio } from './hooks/useAudio.ts'
 import { track, trackPageview } from './lib/analytics.ts'
 import { AmbientField, ScreenTransition } from './motion/index.ts'
 import {
   appendHeard,
+  loadArchive,
   loadBestScore,
   loadDaily,
   loadHeard,
   loadKnown,
+  saveArchive,
   saveBestScore,
   saveHeard,
   saveKnown,
@@ -106,6 +110,9 @@ export default function App() {
   const [editingKnown, setEditingKnown] = useState(false)
   const [daily, setDaily] = useState(firstDaily)
   const [dailyRecord, setDailyRecord] = useState(loadDaily)
+  // Built from the daily record on first load, then stamped on each completed day.
+  const [archive, setArchive] = useState(() => loadArchive(dailyRecord))
+  const [archiveOpen, setArchiveOpen] = useState(false)
   const pool = LANGUAGES.filter((l) => !known?.includes(l.code))
 
   const game = state.screen === 'game' ? state.game : null
@@ -114,7 +121,9 @@ export default function App() {
   // enter transition. The ambient field lives outside it because a transform
   // on the wrapper would trap position: fixed.
   const screenKey = !game
-    ? known === null || editingKnown
+    ? archiveOpen
+      ? 'archive'
+      : known === null || editingKnown
       ? 'know'
       : 'start'
     : game.phase
@@ -222,19 +231,50 @@ export default function App() {
     setDaily(false)
   }
 
+  // Completing a day stamps the archive. addStamp ignores a date already
+  // stamped, so a second finish (or a stale tab) never rewrites the day.
+  const recordDaily = (record: DailyRecord, date: string) => {
+    setDailyRecord(record)
+    const streak = record.lastDate === date ? record.streak : 1
+    const next = addStamp(archive, stampFromDaily(date, record, record.languages[date] ?? [], streak))
+    if (next !== archive) {
+      saveArchive(next)
+      setArchive(next)
+    }
+  }
+
   // The daily is the same for everyone, so it skips the known-languages
   // picker; a shared link plays straight away.
   if (!game && daily) {
     return (
       <DailyChallenge
         record={dailyRecord}
-        onRecord={setDailyRecord}
+        onRecord={recordDaily}
         onBack={leaveDaily}
+        onArchive={() => {
+          leaveDaily()
+          setArchiveOpen(true)
+        }}
         onPlayNormal={() => {
           leaveDaily()
           if (known !== null && pool.length >= MIN_POOL) start('normal')
         }}
       />
+    )
+  }
+
+  if (!game && archiveOpen) {
+    return frame(
+      <Archive
+        archive={archive}
+        today={londonDateKey()}
+        onArchiveChange={setArchive}
+        onPlayDaily={() => {
+          setArchiveOpen(false)
+          setDaily(true)
+        }}
+        onBack={() => setArchiveOpen(false)}
+      />,
     )
   }
 
@@ -264,6 +304,12 @@ export default function App() {
           result: dailyRecord?.results[today] ?? null,
         }}
         onDaily={() => setDaily(true)}
+        archive={{
+          streak: archiveStreak(archive, today),
+          languages: collectedLanguages(archive).length,
+          days: Object.keys(archive.stamps).length,
+        }}
+        onArchive={() => setArchiveOpen(true)}
       />,
     )
   }

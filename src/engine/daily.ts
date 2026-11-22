@@ -10,8 +10,11 @@ import { seedFromString } from './rng.ts'
 /** Tiers 1 + 2 and level-2 sentences: typed recall is already hard. */
 export const DAILY_DIFFICULTY: Difficulty = 'normal'
 export const DAILY_TIME_ZONE = 'Europe/London'
-/** Days of results kept in storage; older ones are dropped first. */
-export const DAILY_RESULTS_CAP = 60
+/**
+ * Days of results kept in storage (about 13 months); older ones are dropped
+ * first. The archive keeps its own stamps, so this only bounds the record.
+ */
+export const DAILY_RESULTS_CAP = 400
 export const SUGGESTION_LIMIT = 8
 
 // ---- dates ------------------------------------------------------------------
@@ -213,10 +216,28 @@ export interface DailyRecord {
   /** Longest streak ever. */
   best: number
   results: Record<string, DailyResult>
+  /**
+   * Languages played each day, in round order, keyed like `results`. Kept
+   * beside the results rather than inside them so v1 results stay valid as
+   * they are; days recorded before v2 have no entry.
+   */
+  languages: Record<string, LangCode[]>
 }
 
-export function resultOf(game: GameState): DailyResult {
-  return { score: game.score, correct: correctCount(game), total: ROUNDS, grid: shareGrid(game.history) }
+/** A finished day as the game produces it: the result plus what was heard. */
+export interface DailyOutcome extends DailyResult {
+  /** Languages played, in round order. */
+  languages: LangCode[]
+}
+
+export function resultOf(game: GameState): DailyOutcome {
+  return {
+    score: game.score,
+    correct: correctCount(game),
+    total: ROUNDS,
+    grid: shareGrid(game.history),
+    languages: game.history.map((r) => r.code),
+  }
 }
 
 /**
@@ -224,19 +245,27 @@ export function resultOf(game: GameState): DailyResult {
  * previous completed day was yesterday; any gap restarts it at 1. A day that
  * is already recorded is left alone, so finishing twice never counts twice.
  */
-export function recordDailyResult(record: DailyRecord | null, date: string, result: DailyResult): DailyRecord {
+export function recordDailyResult(
+  record: DailyRecord | null,
+  date: string,
+  outcome: DailyResult | DailyOutcome,
+): DailyRecord {
   if (record?.results[date]) return record
+  // The languages live beside the result, not inside it (see DailyRecord).
+  const { languages, ...result } = 'languages' in outcome ? outcome : { ...outcome, languages: undefined }
   const streak = record && record.lastDate === previousDateKey(date) ? record.streak + 1 : 1
   const kept = Object.keys(record?.results ?? {})
     .concat(date)
     .sort()
     .slice(-DAILY_RESULTS_CAP)
   const all: Record<string, DailyResult> = { ...record?.results, [date]: result }
+  const heard: Record<string, LangCode[]> = languages ? { ...record?.languages, [date]: languages } : { ...record?.languages }
   return {
     lastDate: record && record.lastDate > date ? record.lastDate : date,
     streak,
     best: Math.max(record?.best ?? 0, streak),
     results: Object.fromEntries(kept.map((d) => [d, all[d] as DailyResult])),
+    languages: Object.fromEntries(kept.flatMap((d) => (heard[d] ? [[d, heard[d]]] : []))),
   }
 }
 
