@@ -16,10 +16,10 @@ import {
   type DailyResult,
   type DailyState,
 } from '../engine/daily.ts'
-import { LIVES, ROUNDS, SLOW_RATE, allowsSlow, isOver, type RoundResult } from '../engine/game.ts'
+import { SLOW_RATE, allowsSlow, isOver, type RoundResult } from '../engine/game.ts'
 import { useAudio } from '../hooks/useAudio.ts'
 import { useHotkeys } from '../hooks/useHotkeys.ts'
-import { track, trackPageview } from '../lib/analytics.ts'
+import { track } from '../lib/analytics.ts'
 import { AmbientField, ScreenTransition } from '../motion/index.ts'
 import { copyText } from '../share.ts'
 import { saveDaily } from '../storage.ts'
@@ -45,14 +45,18 @@ function clipUrl(code: string, voiceIndex: number, sentenceId: string): string {
 }
 
 function shareUrl(): string {
-  return `${window.location.origin}${import.meta.env.BASE_URL}?daily=1`
+  return `${window.location.origin}${import.meta.env.BASE_URL}daily`
 }
 
-/** The whole Daily Challenge flow: intro → rounds/reveals → results. */
+/**
+ * The whole Daily Challenge flow: rounds/reveals → results. It opens already
+ * in round 1 (the tap that got here unlocks audio); a day already played
+ * opens on its results instead.
+ */
 export function DailyChallenge({ record, onRecord, onPlayNormal, onArchive, onBack }: Props) {
   // Fixed for the visit: a game that crosses midnight still counts for the day it began.
   const [today] = useState(() => londonDateKey())
-  const [state, setState] = useState<DailyState | null>(null)
+  const [state, setState] = useState<DailyState | null>(() => (record?.results[today] ? null : initialDaily(today)))
   const [slow, setSlow] = useState(false)
   const game = state?.game ?? null
   const slowActive = allowsSlow(DAILY_DIFFICULTY) && slow
@@ -65,8 +69,10 @@ export function DailyChallenge({ record, onRecord, onPlayNormal, onArchive, onBa
     setRate(slowActive ? SLOW_RATE : 1)
   }, [slowActive, setRate])
 
+  // Mount-only: a fresh day starts the moment the route opens.
+  const startedFresh = useRef(state !== null)
   useEffect(() => {
-    trackPageview('daily')
+    if (startedFresh.current) track('daily_start')
   }, [])
 
   const reported = useRef(-1)
@@ -76,11 +82,6 @@ export function DailyChallenge({ record, onRecord, onPlayNormal, onArchive, onBa
     reported.current = game.roundNumber
     track('daily_guess', { correct: game.lastResult.correct })
   }, [game])
-
-  const start = () => {
-    track('daily_start')
-    setState(initialDaily(today))
-  }
 
   const next = () => {
     if (!state) return
@@ -97,7 +98,7 @@ export function DailyChallenge({ record, onRecord, onPlayNormal, onArchive, onBa
     setState(dailyNext(state))
   }
 
-  const screenKey = !game ? 'daily-intro' : `daily-${game.phase}`
+  const screenKey = !game ? 'daily-end' : `daily-${game.phase}`
   const frame = (screen: ReactNode) => (
     <>
       <AmbientField intensity={0.5} />
@@ -109,11 +110,13 @@ export function DailyChallenge({ record, onRecord, onPlayNormal, onArchive, onBa
   const streak = currentStreak(record, today)
 
   if (!state || state.game.phase === 'over') {
-    if (done) {
+    // No state means the day was already played; an over game recorded it on the way out.
+    const result = done ?? (state && resultOf(state.game))
+    if (result) {
       return frame(
         <DailyEnd
           date={today}
-          result={done}
+          result={result}
           streak={streak}
           best={record?.best ?? streak}
           history={state?.game.history}
@@ -125,7 +128,7 @@ export function DailyChallenge({ record, onRecord, onPlayNormal, onArchive, onBa
         />,
       )
     }
-    return frame(<DailyIntro date={today} streak={streak} onStart={start} onBack={onBack} />)
+    return null
   }
 
   const g = state.game
@@ -157,49 +160,6 @@ export function DailyChallenge({ record, onRecord, onPlayNormal, onArchive, onBa
         )
       )}
     </div>,
-  )
-}
-
-function DailyIntro({
-  date,
-  streak,
-  onStart,
-  onBack,
-}: {
-  date: string
-  streak: number
-  onStart: () => void
-  onBack: () => void
-}) {
-  return (
-    <main className="screen screen--daily" data-testid="daily-intro">
-      <header className="daily-head">
-        <p className="eyebrow daily-head__date">
-          Daily Challenge · <time dateTime={date}>{formatDateKey(date)}</time>
-        </p>
-        <h1 className="daily-head__title">Type the language</h1>
-        <p className="daily-head__lede">
-          Same {ROUNDS} clips for everyone today. No options this time — type what you hear and pick from the list.
-        </p>
-        <p className="eyebrow daily-head__spec">
-          {ROUNDS} rounds · {LIVES} lives · famous &amp; recognisable languages
-        </p>
-      </header>
-
-      <p className="daily-streak" data-testid="daily-streak">
-        {streak > 0 ? `🔥 ${streak}-day streak — keep it going` : 'Finish today to start a streak'}
-      </p>
-
-      {/* This click is the user gesture that unlocks audio playback. */}
-      <button type="button" className="btn btn--signal btn--xl daily__cta" onClick={onStart} data-testid="daily-start" autoFocus>
-        <Icon name="play" className="btn__icon" />
-        Start today’s challenge
-      </button>
-
-      <button type="button" className="link link--quiet daily__back" onClick={onBack}>
-        Back to menu
-      </button>
-    </main>
   )
 }
 

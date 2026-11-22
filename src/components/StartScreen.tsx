@@ -59,9 +59,6 @@ interface Props {
   /** Today's Daily Challenge: its date, the live streak, and the result once done. */
   daily: { date: string; streak: number; result: DailyResult | null }
   onDaily: () => void
-  /** The archive's live streak, distinct languages ever collected, and days stamped. */
-  archive: { streak: number; languages: number; days: number }
-  onArchive: () => void
 }
 
 /** Game parameters as three static pills; the visually hidden text spells each one out. */
@@ -85,32 +82,6 @@ function SpecPills({ languages }: { languages: number }) {
         <span className="sr-only"> languages in play</span>
       </li>
     </ul>
-  )
-}
-
-/** A one-line way into the archive, under the daily card. */
-function ArchiveStrip({ archive, onArchive }: Pick<Props, 'archive' | 'onArchive'>) {
-  const { streak, languages, days } = archive
-  return (
-    <div className="archive-strip" data-testid="archive-strip">
-      <Icon name="calendar" className="archive-strip__icon" />
-      <p className="archive-strip__text">
-        <span className="eyebrow archive-strip__label">Your archive</span>
-        <span className="archive-strip__meta">
-          {/* "0-day streak" reads like a bug and demoralises; when the run has
-              broken, lead with what the player still owns. */}
-          {days === 0
-            ? 'Each finished daily stamps a square'
-            : streak > 0
-              ? `${streak}-day streak · ${languages} language${languages === 1 ? '' : 's'}`
-              : `${days} days stamped · ${languages} language${languages === 1 ? '' : 's'}`}
-        </span>
-      </p>
-      <button type="button" className="btn btn--ghost btn--sm" onClick={onArchive} data-testid="archive-open">
-        <span className="archive-strip__btn-label">View archive</span>
-        <Icon name="arrow" className="btn__icon" />
-      </button>
-    </div>
   )
 }
 
@@ -178,8 +149,6 @@ export function StartScreen({
   onEditKnown,
   daily,
   onDaily,
-  archive,
-  onArchive,
 }: Props) {
   const [difficulty, setDifficulty] = useState<Difficulty>('normal')
   const tooFew = pool.length < MIN_POOL
@@ -203,10 +172,7 @@ export function StartScreen({
         <SpecPills languages={pool.length} />
       </header>
 
-      <div className="start__daily">
-        <DailyCard daily={daily} onDaily={onDaily} />
-        <ArchiveStrip archive={archive} onArchive={onArchive} />
-      </div>
+      <DailyCard daily={daily} onDaily={onDaily} />
 
       <fieldset className="levels">
         <legend className="eyebrow levels__legend">Difficulty</legend>

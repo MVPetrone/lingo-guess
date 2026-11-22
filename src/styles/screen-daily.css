@@ -109,49 +109,15 @@
   box-shadow: var(--ring-caliber);
 }
 
-/* ---- intro --------------------------------------------------------------------- */
-.daily__cta {
-  width: 100%;
-}
-
-.daily__back {
-  align-self: center;
-}
-
+/* ---- results ------------------------------------------------------------------- */
 .screen--daily {
   min-height: 100svh;
   justify-content: center;
 }
 
-.daily-head {
-  display: grid;
-  gap: var(--s-2);
-}
-
-.daily-head__date {
-  color: var(--machine);
-}
-
-.daily-head__title {
-  font-size: var(--fs-h1);
-  line-height: 1.05;
-  letter-spacing: -0.02em;
-}
-
 .daily-head__lede {
   max-width: 34rem;
   color: var(--text-2);
-}
-
-.daily-streak {
-  padding: var(--s-3) var(--s-4);
-  border: var(--hairline);
-  border-radius: var(--r-md);
-  background-color: var(--surface-1);
-  color: var(--text-1);
-  font-family: var(--font-mono);
-  font-size: var(--fs-small);
-  letter-spacing: var(--tracking-mono);
 }
 
 /* ---- typed answer -------------------------------------------------------------- */
@@ -318,16 +284,5 @@
     border-bottom-color: var(--machine);
     border-radius: 0 0 var(--r-md) var(--r-md);
     max-height: min(32vh, 15rem);
-  }
-
-  .daily__cta {
-    width: auto;
-    min-width: 18rem;
-    justify-self: start;
-    align-self: flex-start;
-  }
-
-  .daily__back {
-    align-self: flex-start;
   }
 }
