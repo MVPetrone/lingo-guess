@@ -147,18 +147,24 @@ function read_json_body(int $maxBytes = 8192): array
     return is_array($data) ? $data : [];
 }
 
-/** Same-origin check for the public collector (browsers send Origin on POST). */
-function is_first_party_request(): bool
+/**
+ * Same-origin check for public writes (browsers send Origin on POST/PUT/DELETE).
+ * `$extra` adds exact origins such as the configured canonical one for local dev.
+ */
+function is_first_party_request(array $extra = []): bool
 {
     $origin = $_SERVER['HTTP_ORIGIN'] ?? '';
     $referer = $_SERVER['HTTP_REFERER'] ?? '';
-    $allowed = ['https://lingoguess.com', 'https://www.lingoguess.com'];
+    $allowed = array_merge(['https://lingoguess.com', 'https://www.lingoguess.com'], $extra);
     if ($origin !== '') {
         return in_array(rtrim($origin, '/'), $allowed, true);
     }
     if ($referer !== '') {
+        $scheme = (string) parse_url($referer, PHP_URL_SCHEME);
         $host = strtolower((string) parse_url($referer, PHP_URL_HOST));
-        return in_array($host, ['lingoguess.com', 'www.lingoguess.com'], true);
+        $port = parse_url($referer, PHP_URL_PORT);
+        $refOrigin = $scheme . '://' . $host . ($port ? ':' . $port : '');
+        return in_array($refOrigin, $allowed, true);
     }
     return false;
 }
