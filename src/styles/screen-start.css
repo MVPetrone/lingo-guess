@@ -1,5 +1,9 @@
 /* ============================================================================
    START — the instrument boot screen
+   Meaning is carried by icons: game parameters as pills, each level as a
+   waveform plus icon facts. Prose is down to one hint line under the levels.
+   Daily card and archive strip live in their own files; the start-screen
+   layout of both is scoped here under .screen--start.
    ========================================================================== */
 
 .screen--start {
@@ -30,13 +34,203 @@
 }
 
 .hero__lede,
-.hero__spec {
+.spec-pills {
   grid-column: 1 / -1;
 }
 
 .hero__lede {
   margin-top: var(--s-2);
   color: var(--text-2);
+}
+
+/* ---- spec pills: rounds, lives, pool — static readouts, not buttons -------- */
+.spec-pills {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--s-2);
+  margin-top: var(--s-1);
+  padding: 0;
+  list-style: none;
+}
+
+.spec-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--s-2);
+  height: var(--s-6);
+  padding-inline: var(--s-3);
+  border: var(--hairline);
+  border-radius: var(--r-pill);
+  background-color: var(--surface-1);
+  color: var(--text-1);
+  font-family: var(--font-mono);
+  font-size: var(--fs-telemetry);
+  font-weight: 500;
+  font-variant-numeric: tabular-nums;
+  line-height: 1;
+}
+
+/* Icons sit at the small text step. */
+.spec-pill__icon,
+.spec-pill__heart {
+  flex: none;
+  width: var(--fs-small);
+  height: var(--fs-small);
+}
+
+.spec-pill__icon {
+  color: var(--machine);
+}
+
+/* A life is lost on a wrong answer, so hearts wear the deny verdict. */
+.spec-pill__heart {
+  color: var(--deny-500);
+}
+
+.spec-pill__heart + .spec-pill__heart {
+  margin-inline-start: calc(var(--s-1) * -1);
+}
+
+/* ---- daily card, start-screen layout: date badge · body · arrow ------------- */
+.screen--start .daily-card {
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  gap: var(--s-4);
+  padding: var(--s-4) var(--s-5) var(--s-4) var(--s-4);
+}
+
+.screen--start .daily-card::before {
+  content: none;
+}
+
+.date-badge {
+  display: grid;
+  place-content: center;
+  justify-items: center;
+  width: var(--tap-min);
+  height: var(--tap-min);
+  border-radius: var(--r-sm);
+  background-color: var(--caliber-wash);
+  line-height: 1;
+}
+
+.date-badge__month {
+  color: var(--machine);
+  font-family: var(--font-mono);
+  font-size: var(--fs-telemetry);
+  font-weight: 500;
+  letter-spacing: var(--tracking-mono);
+  text-transform: uppercase;
+}
+
+.date-badge__day {
+  color: var(--text-1);
+  font-family: var(--font-display);
+  font-size: var(--fs-h3);
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+
+.screen--start .daily-card__body {
+  gap: var(--s-2);
+}
+
+/* Eyebrow on the left, streak on the right: never a stranded third line. */
+.daily-card__head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--s-2);
+  min-width: 0;
+}
+
+.screen--start .daily-card__meta {
+  align-items: center;
+}
+
+.daily-card__fact {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--s-2);
+}
+
+.daily-card__fact-icon {
+  flex: none;
+  width: var(--icon);
+  height: var(--icon);
+  color: var(--text-3);
+}
+
+.daily-card__streak {
+  color: var(--machine);
+  font-family: var(--font-mono);
+  font-size: var(--fs-telemetry);
+  font-variant-numeric: tabular-nums;
+}
+
+.daily-card.is-done .date-badge {
+  background-color: var(--surface-2);
+}
+
+.daily-card.is-done .date-badge__month {
+  color: var(--text-3);
+}
+
+/* ---- archive strip, start-screen layout: one line, calendar first ----------- */
+/* The strip's one-line meta must not widen the column. */
+.screen--start .start__daily {
+  grid-template-columns: minmax(0, 1fr);
+}
+
+.screen--start .archive-strip {
+  padding-inline-start: var(--s-4);
+  border-radius: var(--r-pill);
+}
+
+.archive-strip__icon {
+  flex: none;
+  width: var(--icon);
+  height: var(--icon);
+  color: var(--text-3);
+}
+
+.screen--start .archive-strip__text {
+  display: flex;
+  align-items: baseline;
+  gap: var(--s-3);
+  flex: 1;
+  min-width: 0;
+}
+
+.screen--start .archive-strip__meta {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* Phones: the calendar stands in for the label and the button keeps only its
+   arrow (its text stays in the accessible name), so the meta gets the line. */
+@media (max-width: 39.99rem) {
+  .screen--start .archive-strip__label {
+    display: none;
+  }
+
+  .screen--start .archive-strip .btn {
+    width: var(--tap-min);
+    padding-inline: 0;
+  }
+
+  .archive-strip__btn-label {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
+  }
+}
+
+.screen--start .archive-strip .btn {
+  border-radius: var(--r-pill);
 }
 
 /* ---- difficulty: a real radiogroup, drawn as cards ----------------------------- */
@@ -48,6 +242,9 @@
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: var(--s-2);
+  /* Equal rows: Expert carries three meta lines, and a ragged 2 × 2 grid reads
+     as a layout bug rather than a hierarchy. */
+  grid-auto-rows: 1fr;
 }
 
 @media (max-width: 23.74rem) {
@@ -56,12 +253,19 @@
   }
 }
 
+@media (min-width: 40rem) {
+  .levels__grid {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+}
+
 .level {
   position: relative;
   display: grid;
   align-content: start;
-  gap: var(--s-1);
-  padding: var(--s-3) var(--s-4);
+  justify-items: start;
+  gap: var(--s-3);
+  padding: var(--s-4);
   border: var(--hairline);
   border-radius: var(--r-md);
   background-color: var(--surface-1);
@@ -69,24 +273,12 @@
   transition: var(--t-ui);
 }
 
-/* Left edge bar: the selected state's third cue, after hairline and wash. */
-.level::before {
-  content: '';
-  position: absolute;
-  inset-block: var(--s-3);
-  inset-inline-start: -1px;
-  width: var(--edge-w);
-  border-radius: var(--r-pill);
-  background-color: var(--machine);
-  transform: scaleY(0);
-  transition: transform var(--dur-2) var(--ease-settle);
-}
-
-.level__head {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: var(--s-2);
+.level__glyph {
+  display: block;
+  width: auto;
+  height: var(--s-5);
+  color: var(--text-2);
+  transition: var(--t-ui);
 }
 
 .level__label {
@@ -94,30 +286,33 @@
   font-size: var(--fs-h3);
   font-weight: 500;
   letter-spacing: var(--tracking-display);
+  line-height: var(--lh-snug);
 }
 
-.level__glyph {
-  flex: none;
-  width: 2.125rem;
-  height: 0.875rem;
-  color: var(--text-3);
-  fill: none;
-  stroke: currentColor;
-  stroke-width: 1.2;
-  transition: var(--t-ui);
+.level__facts {
+  display: grid;
+  gap: var(--s-2);
 }
 
-.level__glyph .is-lit {
-  fill: currentColor;
-}
-
-.level__ring {
-  fill: none;
-  stroke-width: 1.2;
-}
-
-.level__hint {
+.level__fact {
+  display: flex;
+  align-items: center;
+  gap: var(--s-2);
   color: var(--text-2);
+  font-size: var(--fs-small);
+  line-height: var(--lh-snug);
+}
+
+.level__fact-icon {
+  flex: none;
+  width: var(--fs-small);
+  height: var(--fs-small);
+  color: var(--text-3);
+}
+
+.levels__hint {
+  margin-top: var(--s-3);
+  color: var(--text-3);
   font-size: var(--fs-small);
   line-height: var(--lh-snug);
 }
@@ -138,10 +333,6 @@
   background-color: var(--caliber-wash);
 }
 
-.level.is-selected::before {
-  transform: scaleY(1);
-}
-
 .level.is-selected .level__glyph {
   color: var(--machine);
 }
@@ -157,29 +348,54 @@
 }
 
 .start__cta {
+  position: relative;
   width: 100%;
+  padding-inline: var(--s-2) var(--s-6);
+  border-radius: var(--r-pill);
 }
 
-/* ---- footer telemetry ---------------------------------------------------------- */
+/* The glow is its own blurred layer behind the pill, never a shadow on the surface. */
+.start__cta::before {
+  content: '';
+  position: absolute;
+  inset: var(--s-2) var(--s-4) calc(var(--s-2) * -1);
+  z-index: -1;
+  border-radius: inherit;
+  background-color: var(--signal-glow);
+  filter: blur(var(--s-4));
+  pointer-events: none;
+}
+
+.start__cta:disabled::before {
+  content: none;
+}
+
+.start__cta-disc {
+  display: grid;
+  place-items: center;
+  flex: none;
+  width: calc(var(--s-6) + var(--s-1));
+  height: calc(var(--s-6) + var(--s-1));
+  margin-inline-end: var(--s-2);
+  border-radius: 50%;
+  background-color: var(--ink-950);
+  color: var(--voice);
+}
+
+.start__cta:disabled .start__cta-disc {
+  background-color: var(--surface-2);
+  color: var(--text-3);
+}
+
+/* ---- footer: known languages, best score, keys --------------------------------- */
 .start__foot {
   display: grid;
-  gap: var(--s-3);
-  padding-top: var(--s-4);
+  gap: var(--s-4);
+  padding-top: var(--s-5);
   border-top: 1px solid var(--line-faint);
 }
 
-.start__known {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  column-gap: var(--s-3);
-}
-
-.start__known .link {
-  margin-inline-start: calc(var(--s-1) * -1);
-}
-
-.start__telemetry {
+.start__foot-row {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
@@ -187,22 +403,96 @@
   gap: var(--s-3);
 }
 
-.start__keys kbd {
-  margin-inline: calc(var(--s-1) / 2);
+.known-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--s-2);
+  min-height: var(--tap-min);
+  padding: var(--s-1) var(--s-2) var(--s-1) var(--s-3);
+  border: var(--hairline);
+  border-radius: var(--r-pill);
+  background-color: var(--surface-1);
+  color: var(--machine);
+  font-size: var(--fs-small);
+  font-weight: 500;
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+  transition: var(--t-ui);
 }
 
-.readout {
+@media (hover: hover) {
+  .known-pill:hover {
+    border-color: var(--line-strong);
+    background-color: var(--surface-2);
+  }
+}
+
+.known-pill:active {
+  transform: scale(0.98);
+}
+
+.known-pill__icon {
+  flex: none;
+  width: var(--icon);
+  height: var(--icon);
+}
+
+.known-pill__chip {
+  padding: var(--s-1) var(--s-2);
+  border-radius: var(--r-pill);
+  background-color: var(--caliber-wash);
+  font-family: var(--font-mono);
+  font-size: var(--fs-telemetry);
+  font-variant-numeric: tabular-nums;
+  line-height: 1;
+  white-space: nowrap;
+}
+
+.start__best {
   display: inline-flex;
-  align-items: baseline;
+  align-items: center;
   gap: var(--s-2);
+}
+
+.start__best-icon {
+  flex: none;
+  width: var(--icon);
+  height: var(--icon);
+  color: var(--voice);
 }
 
 .readout__value {
   color: var(--text-1);
   font-family: var(--font-mono);
   font-size: var(--fs-body);
-  font-weight: 500;
+  font-weight: 600;
   font-variant-numeric: tabular-nums;
+}
+
+.start__keys {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--s-1) var(--s-2);
+}
+
+.start__keys-icon {
+  flex: none;
+  width: var(--fs-small);
+  height: var(--fs-small);
+}
+
+.start__keys kbd {
+  margin-inline: calc(var(--s-1) / 2);
+}
+
+/* ---- ≥ 640px: the CTA sizes to its label, as in the four-across layout --------- */
+@media (min-width: 40rem) {
+  .start__cta {
+    width: auto;
+    min-width: 16rem;
+    justify-self: start;
+  }
 }
 
 /* ---- wide screens: more air, larger hero, the field shows around the column -- */
@@ -226,11 +516,5 @@
 
   .hero__lede {
     font-size: var(--fs-h3);
-  }
-
-  .start__cta {
-    width: auto;
-    min-width: 18rem;
-    justify-self: start;
   }
 }

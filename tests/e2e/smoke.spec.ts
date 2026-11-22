@@ -205,10 +205,10 @@ test('known languages: searchable picker, asked once, excluded from every option
   )
   await page.getByTestId('know-save').click()
 
-  await expect(page.getByTestId('excluded-count')).toContainText('6 languages you know are left out')
+  await expect(page.getByTestId('excluded-count')).toHaveText('6 skipped')
   await page.reload()
   await expect(page.getByTestId('know-languages')).toHaveCount(0)
-  await expect(page.getByTestId('excluded-count')).toContainText('6 languages')
+  await expect(page.getByTestId('excluded-count')).toHaveText('6 skipped')
 
   const excluded = ['Spanish', 'French', 'German', 'Italian', 'Portuguese (Brazil)', 'Dutch']
   await page.getByRole('button', { name: /start/i }).click()
