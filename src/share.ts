@@ -38,3 +38,14 @@ export async function copyText(text: string): Promise<boolean> {
     return false
   }
 }
+
+/** Saves `text` as a file download (the archive's Export). */
+export function downloadText(fileName: string, text: string, type = 'application/json'): void {
+  const url = URL.createObjectURL(new Blob([text], { type }))
+  const a = document.createElement('a')
+  a.href = url
+  a.download = fileName
+  a.click()
+  // Revoke after the click has been handled, or some browsers cancel the download.
+  setTimeout(() => URL.revokeObjectURL(url), 0)
+}

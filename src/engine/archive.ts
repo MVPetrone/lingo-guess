@@ -4,7 +4,7 @@
 // `YYYY-MM-DD` keys in UTC (the keys are already London days), never on
 // local-time Date getters, so DST and the player's zone cannot shift a day.
 import { LANGUAGES, type LangCode } from '../data/languages.ts'
-import { previousDateKey, type DailyRecord } from './daily.ts'
+import { isDateKey, previousDateKey, type DailyRecord } from './daily.ts'
 
 /** Stamps kept at most (over two years); the oldest are dropped first. */
 export const ARCHIVE_CAP = 800
@@ -32,12 +32,8 @@ export function emptyArchive(): Archive {
   return { v: 2, stamps: {}, firstDate: '' }
 }
 
-/** A real calendar day as `YYYY-MM-DD` (rejects `2026-02-30`). */
-export function isDateKey(s: unknown): s is string {
-  if (typeof s !== 'string' || !/^\d{4}-\d{2}-\d{2}$/.test(s)) return false
-  const [y, m, d] = s.split('-').map(Number) as [number, number, number]
-  return new Date(Date.UTC(y, m - 1, d)).toISOString().slice(0, 10) === s
-}
+// Date keys are the daily engine's; re-exported so archive callers need one import.
+export { isDateKey }
 
 /**
  * The stamp for `date`, read from the daily record. The record is expected
@@ -181,20 +177,24 @@ function parseStamp(key: string, value: unknown): DayStamp | null {
  */
 export function importJson(raw: string): Archive | null {
   try {
-    const parsed: unknown = JSON.parse(raw)
-    if (typeof parsed !== 'object' || parsed === null || Array.isArray(parsed)) return null
-    const { v, stamps } = parsed as Record<string, unknown>
-    if (v !== 2 || typeof stamps !== 'object' || stamps === null || Array.isArray(stamps)) return null
-    let archive = emptyArchive()
-    for (const [key, value] of Object.entries(stamps)) {
-      const stamp = parseStamp(key, value)
-      if (!stamp) return null
-      archive = addStamp(archive, stamp)
-    }
-    return archive
+    return parseArchive(JSON.parse(raw))
   } catch {
     return null
   }
+}
+
+/** `importJson` for an already-parsed value (a synced payload carries the archive as an object). */
+export function parseArchive(parsed: unknown): Archive | null {
+  if (typeof parsed !== 'object' || parsed === null || Array.isArray(parsed)) return null
+  const { v, stamps } = parsed as Record<string, unknown>
+  if (v !== 2 || typeof stamps !== 'object' || stamps === null || Array.isArray(stamps)) return null
+  let archive = emptyArchive()
+  for (const [key, value] of Object.entries(stamps)) {
+    const stamp = parseStamp(key, value)
+    if (!stamp) return null
+    archive = addStamp(archive, stamp)
+  }
+  return archive
 }
 
 /** Both archives' days; where both hold a date, `base` keeps its own. */

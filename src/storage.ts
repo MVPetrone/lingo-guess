@@ -1,15 +1,13 @@
-import { LANGUAGES, type LangCode } from './data/languages.ts'
 import {
   addStamp,
   emptyArchive,
   exportJson,
   importJson,
-  isDateKey,
   mergeArchives,
   stampFromDaily,
   type Archive,
 } from './engine/archive.ts'
-import { previousDateKey, type DailyRecord, type DailyResult } from './engine/daily.ts'
+import { parseDailyRecord, previousDateKey, type DailyRecord } from './engine/daily.ts'
 
 // localStorage can be disabled, full, or throw on access (Safari private mode,
 // sandboxed iframes, blocked cookies). Every call here degrades to "no value".
@@ -95,35 +93,6 @@ const DAILY_KEY_V1 = 'lingo.daily.v1'
 /** v2 adds `languages`, the languages heard each day. */
 const DAILY_KEY = 'lingo.daily.v2'
 
-const isCount = (n: unknown): n is number => typeof n === 'number' && Number.isFinite(n) && n >= 0
-const ROSTER = new Set<string>(LANGUAGES.map((l) => l.code))
-
-function parseDaily(raw: string): DailyRecord | null {
-  const parsed: unknown = JSON.parse(raw)
-  if (typeof parsed !== 'object' || parsed === null) return null
-  const { lastDate, streak, best, results, languages } = parsed as Record<string, unknown>
-  if (!isDateKey(lastDate) || !isCount(streak) || !isCount(best)) return null
-  const clean: Record<string, DailyResult> = {}
-  if (typeof results === 'object' && results !== null) {
-    for (const [date, r] of Object.entries(results)) {
-      if (!isDateKey(date) || typeof r !== 'object' || r === null) continue
-      const { score, correct, total, grid } = r as Record<string, unknown>
-      if (!isCount(score) || !isCount(correct) || !isCount(total)) continue
-      clean[date] = typeof grid === 'string' ? { score, correct, total, grid } : { score, correct, total }
-    }
-  }
-  // Absent in v1. A day with unreadable languages keeps its result and reads
-  // as "languages unknown"; codes no longer in the roster are dropped.
-  const heard: Record<string, LangCode[]> = {}
-  if (typeof languages === 'object' && languages !== null) {
-    for (const [date, codes] of Object.entries(languages)) {
-      if (!clean[date] || !Array.isArray(codes)) continue
-      heard[date] = codes.filter((c): c is LangCode => typeof c === 'string' && ROSTER.has(c))
-    }
-  }
-  return { lastDate, streak, best, results: clean, languages: heard }
-}
-
 /**
  * The Daily Challenge record, or null if none is stored or it is unreadable.
  * A v1 record is migrated on first read (no languages for its days) and
@@ -132,10 +101,10 @@ function parseDaily(raw: string): DailyRecord | null {
 export function loadDaily(): DailyRecord | null {
   try {
     const raw = window.localStorage.getItem(DAILY_KEY)
-    if (raw !== null) return parseDaily(raw)
+    if (raw !== null) return parseDailyRecord(JSON.parse(raw))
     const legacy = window.localStorage.getItem(DAILY_KEY_V1)
     if (legacy === null) return null
-    const migrated = parseDaily(legacy)
+    const migrated = parseDailyRecord(JSON.parse(legacy))
     if (migrated) saveDaily(migrated)
     return migrated
   } catch {
@@ -224,4 +193,56 @@ export function importArchive(current: Archive, raw: string): Archive | null {
 /** `lingo-archive-2026-11-22.json` / `.png`. */
 export function archiveFileName(today: string, ext: 'json' | 'png'): string {
   return `lingo-archive-${today}.${ext}`
+}
+
+// ---- account sync markers ------------------------------------------------------
+
+/**
+ * Set once this device's archive has been joined to the signed-in account
+ * (merged in, or found to hold nothing the account lacks). Until then sync
+ * only reads, so local days are never pushed — or hidden — without asking.
+ */
+const SYNC_LINK_KEY = 'lingo.sync.v1'
+
+export function loadSyncLinked(): boolean {
+  try {
+    const raw = window.localStorage.getItem(SYNC_LINK_KEY)
+    return raw !== null && (JSON.parse(raw) as { linked?: unknown } | null)?.linked === true
+  } catch {
+    return false
+  }
+}
+
+export function saveSyncLinked(linked: boolean): void {
+  try {
+    if (linked) window.localStorage.setItem(SYNC_LINK_KEY, JSON.stringify({ linked: true }))
+    else window.localStorage.removeItem(SYNC_LINK_KEY)
+  } catch {
+    // Not persisted: the next visit asks again, which never loses a day.
+  }
+}
+
+/**
+ * When the account last confirmed it holds exactly this device's data (a
+ * push succeeded, or a pull matched). Per tab session only: the copy must
+ * not claim a sync that this visit has not seen.
+ */
+const SYNC_LAST_KEY = 'lingo.sync.last'
+
+export function loadLastSyncedAt(): number | null {
+  try {
+    const n = Number(window.sessionStorage.getItem(SYNC_LAST_KEY))
+    return Number.isFinite(n) && n > 0 ? n : null
+  } catch {
+    return null
+  }
+}
+
+export function saveLastSyncedAt(at: number | null): void {
+  try {
+    if (at === null) window.sessionStorage.removeItem(SYNC_LAST_KEY)
+    else window.sessionStorage.setItem(SYNC_LAST_KEY, String(at))
+  } catch {
+    // Not persisted; the in-memory value still drives the copy.
+  }
 }

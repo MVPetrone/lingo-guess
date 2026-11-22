@@ -32,6 +32,29 @@ const server = createServer(async (req, res) => {
     return res.end('Not found')
   }
   let rel = decodeURIComponent(url.pathname.slice(BASE.length)) || 'index.html'
+
+  // /admin/api is PHP on the real host. This server has no PHP, so answer the
+  // documented signed-out contract instead of a 404: a visitor with no cookie
+  // gets exactly these answers from production, and a 404 here would surface
+  // as a console error in every spec that (rightly) asserts a clean console.
+  if (rel.startsWith('admin/api/')) {
+    const endpoint = rel.slice('admin/api/'.length)
+    const send = (status, body) => {
+      const payload = JSON.stringify(body)
+      res.writeHead(status, {
+        'content-type': 'application/json; charset=utf-8',
+        'content-length': Buffer.byteLength(payload),
+        'cache-control': 'no-store',
+      })
+      res.end(payload)
+    }
+    if (endpoint === 'me.php') return send(200, { signed_in: false })
+    if (endpoint === 'sync.php') return send(401, { error: 'unauthorized' })
+    if (endpoint === 'auth_logout.php' || endpoint === 'account.php') return send(401, { error: 'unauthorized' })
+    if (endpoint === 'auth_start.php') return send(503, { error: 'not_installed' })
+    return send(404, { error: 'not_found' })
+  }
+
   let file = normalize(join(DIST, rel))
   if (!file.startsWith(DIST)) {
     res.writeHead(403)

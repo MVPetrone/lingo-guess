@@ -69,9 +69,15 @@ and `admin/.htaccess` additionally denies `lib/` and non-PHP extensions.
   dropped, no raw IPs stored (HMAC-SHA256 with the app secret).
 - **Installer**: gated by the SHA-256 digest of a 48-character token (only the
   digest is committed), returns 410 once `config.php` exists.
-- **Privacy**: no cookies, no third-party scripts, honours Do Not Track and
-  Global Privacy Control, referrers reduced to hostnames, UA reduced to
+- **Privacy**: no cookies and no third-party scripts **unless you sign in with Google** — then one
+  first-party session cookie (`lingo_sess`, HttpOnly, 90 days) and a top-level redirect to Google at
+  sign-in; no Google JavaScript is loaded on the page and no Google tokens are retained. Honours Do
+  Not Track and Global Privacy Control, referrers reduced to hostnames, UA reduced to
   device/OS/browser buckets, events pruned after 400 days.
+- **Accounts**: signing in is optional and only exists to keep the Daily Archive across devices.
+  `players` holds the Google subject, email, name, picture, one opaque JSON blob of game data and its
+  version; `sessions` holds the session rows and cascades on player delete. `account.php` is a hard
+  delete — the GDPR erasure path.
 
 ## Operating it
 
