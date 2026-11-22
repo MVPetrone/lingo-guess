@@ -15,6 +15,7 @@ import {
   previousDateKey,
   recordDailyResult,
   resolveLanguage,
+  resultOf,
   suggestLanguages,
   type DailyRecord,
   type DailyResult,
@@ -224,7 +225,7 @@ describe('daily streaks', () => {
   })
 
   it('the live streak survives until the end of the next day', () => {
-    const rec: DailyRecord = { lastDate: '2026-11-20', streak: 4, best: 4, results: {} }
+    const rec: DailyRecord = { lastDate: '2026-11-20', streak: 4, best: 4, results: {}, languages: {} }
     expect(currentStreak(rec, '2026-11-20')).toBe(4)
     expect(currentStreak(rec, '2026-11-21')).toBe(4)
     expect(currentStreak(rec, '2026-11-22')).toBe(0)
@@ -269,12 +270,13 @@ describe('daily storage', () => {
     Reflect.deleteProperty(globalThis, 'window')
   })
 
-  it('round-trips under lingo.daily.v1', () => {
+  it('round-trips under lingo.daily.v2 and never writes v1', () => {
     const store = new Map<string, string>()
     fakeStorage(store)
-    const rec = recordDailyResult(null, '2026-11-21', { score: 1, correct: 1, total: 10, grid: '🟩' })
+    const rec = recordDailyResult(null, '2026-11-21', { score: 1, correct: 1, total: 10, grid: '🟩', languages: ['ja-JP'] })
     saveDaily(rec)
-    expect(store.has('lingo.daily.v1')).toBe(true)
+    expect(store.has('lingo.daily.v2')).toBe(true)
+    expect(store.has('lingo.daily.v1')).toBe(false)
     expect(loadDaily()).toEqual(rec)
   })
 
@@ -296,9 +298,97 @@ describe('daily storage', () => {
       streak: 2,
       best: 3,
       results: { '2026-11-21': { score: 5, correct: 1, total: 10 } },
+      languages: {},
     })
     fakeStorage('throws')
     expect(loadDaily()).toBeNull()
-    expect(() => saveDaily({ lastDate: '2026-11-21', streak: 1, best: 1, results: {} })).not.toThrow()
+    expect(() => saveDaily({ lastDate: '2026-11-21', streak: 1, best: 1, results: {}, languages: {} })).not.toThrow()
+  })
+
+  it('migrates a v1 record to v2 on first load and leaves v1 in place', () => {
+    const v1 = JSON.stringify({
+      lastDate: '2026-11-21',
+      streak: 2,
+      best: 2,
+      results: { '2026-11-20': { score: 5, correct: 1, total: 10 }, '2026-11-21': { score: 9, correct: 2, total: 10 } },
+    })
+    const store = new Map([['lingo.daily.v1', v1]])
+    fakeStorage(store)
+    const rec = loadDaily()
+    // v1 has no languages: every day reads as "unknown", not as an error.
+    expect(rec).toEqual({
+      lastDate: '2026-11-21',
+      streak: 2,
+      best: 2,
+      results: { '2026-11-20': { score: 5, correct: 1, total: 10 }, '2026-11-21': { score: 9, correct: 2, total: 10 } },
+      languages: {},
+    })
+    expect(JSON.parse(store.get('lingo.daily.v2') ?? 'null')).toEqual(rec)
+    expect(store.get('lingo.daily.v1')).toBe(v1)
+
+    // Once v2 exists it wins, even if v1 is still there.
+    const next = recordDailyResult(rec, '2026-11-22', { score: 1, correct: 1, total: 10, languages: ['fr-FR'] })
+    saveDaily(next)
+    expect(loadDaily()).toEqual(next)
+    expect(loadDaily()?.languages).toEqual({ '2026-11-22': ['fr-FR'] })
+  })
+
+  it('keeps valid per-day languages and drops the rest', () => {
+    fakeStorage(
+      new Map([
+        [
+          'lingo.daily.v2',
+          JSON.stringify({
+            lastDate: '2026-11-21',
+            streak: 1,
+            best: 1,
+            results: { '2026-11-21': { score: 5, correct: 1, total: 10 } },
+            // Unknown code dropped; a day without a result and a non-array ignored.
+            languages: { '2026-11-21': ['es-ES', 'xx-XX', 7], '2026-11-19': ['fr-FR'], '2026-11-20': 'de-DE' },
+          }),
+        ],
+      ]),
+    )
+    expect(loadDaily()?.languages).toEqual({ '2026-11-21': ['es-ES'] })
+  })
+})
+
+describe('daily languages', () => {
+  it('resultOf lists the languages played, in round order', () => {
+    const states = play('2026-11-21')
+    const final = states.at(-1) as DailyState
+    const heard = states
+      .filter((s) => s.game.phase === 'round')
+      .map((s) => s.game.round.language.code)
+    const outcome = resultOf(final.game)
+    expect(outcome.languages).toEqual(heard)
+    expect(outcome.languages).toHaveLength(ROUNDS)
+    expect(outcome).toMatchObject({ correct: ROUNDS, total: ROUNDS })
+  })
+
+  it('stores the languages beside the result, not inside it', () => {
+    const rec = recordDailyResult(null, '2026-11-21', { score: 5, correct: 1, total: 10, languages: ['es-ES', 'fr-FR'] })
+    expect(rec.results['2026-11-21']).toEqual({ score: 5, correct: 1, total: 10 })
+    expect(rec.languages).toEqual({ '2026-11-21': ['es-ES', 'fr-FR'] })
+    // A result without languages (an older caller) records no entry.
+    const next = recordDailyResult(rec, '2026-11-22', { score: 1, correct: 1, total: 10 })
+    expect(next.languages).toEqual({ '2026-11-21': ['es-ES', 'fr-FR'] })
+  })
+
+  it('drops languages together with their capped-out results', () => {
+    let rec: DailyRecord | null = null
+    let day = '2026-12-31'
+    const days: string[] = []
+    for (let i = 0; i < DAILY_RESULTS_CAP + 3; i++) {
+      days.unshift(day)
+      day = previousDateKey(day)
+    }
+    for (const d of days) rec = recordDailyResult(rec, d, { score: 1, correct: 1, total: 10, languages: ['de-DE'] })
+    expect(Object.keys(rec?.languages ?? {})).toEqual(Object.keys(rec?.results ?? {}))
+    expect(Object.keys(rec?.languages ?? {})).toHaveLength(DAILY_RESULTS_CAP)
+  })
+
+  it('keeps about 13 months of results', () => {
+    expect(DAILY_RESULTS_CAP).toBe(400)
   })
 })
