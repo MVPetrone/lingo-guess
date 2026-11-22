@@ -5,39 +5,45 @@
    the machine waiting for a reading.
    ========================================================================== */
 
-/* ---- ways in: start-screen strip, daily end link ----------------------------- */
-.start__daily {
-  display: grid;
-  gap: var(--s-2);
+/* ---- ways in: start-screen side rail, daily end link ------------------------- */
+/* Fixed and out of flow, so the archive takes no room on the start screen.
+   It sits in the corner the safe area leaves free; the hero reserves the same
+   width on its first line (screen-start.css) so the two never touch. */
+.side-rail {
+  position: fixed;
+  top: calc(var(--s-3) + var(--safe-t));
+  right: calc(var(--s-3) + env(safe-area-inset-right, 0px));
+  z-index: var(--z-hud);
 }
 
-.archive-strip {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: var(--s-3);
-  padding: var(--s-2) var(--s-2) var(--s-2) var(--s-4);
+.side-rail__btn {
+  display: grid;
+  place-items: center;
+  width: var(--tap-min);
+  height: var(--tap-min);
   border: var(--hairline);
-  border-radius: var(--r-md);
-  background-color: var(--surface-1);
+  border-radius: 50%;
+  background-color: transparent;
+  color: var(--text-2);
+  cursor: pointer;
+  transition: var(--t-ui);
 }
 
-.archive-strip__text {
-  display: grid;
-  min-width: 0;
+@media (hover: hover) {
+  .side-rail__btn:hover {
+    background-color: var(--surface-1);
+    color: var(--text-1);
+  }
 }
 
-.archive-strip__label {
-  color: var(--text-3);
+.side-rail__btn:focus-visible {
+  outline: none;
+  box-shadow: var(--ring-caliber);
 }
 
-.archive-strip__meta {
-  color: var(--text-1);
-  font-size: var(--fs-small);
-}
-
-.archive-strip .btn {
-  flex: none;
+.side-rail__icon {
+  width: var(--icon);
+  height: var(--icon);
 }
 
 .daily-end__links {

@@ -37,7 +37,9 @@ async function openArchive(page: Page, archive: Archive | null) {
     [archive ? exportJson(archive) : null],
   )
   await page.goto('./')
+  // The archive's entry is the fixed side control, not a strip in the flow.
   await page.getByTestId('archive-open').click()
+  await expect(page).toHaveURL(/\/archive$/)
   await expect(page.getByTestId('archive')).toBeVisible()
 }
 
@@ -73,8 +75,10 @@ test('21 stamped days fill 21 cells and the headline counts them', async ({ page
   await first.getByRole('button').click()
   await expect(page.getByTestId('archive-detail').locator('.flag')).toHaveCount(10)
 
+  // Back returns home, where the side control is the way in again.
   await page.getByTestId('archive-back').click()
-  await expect(page.getByTestId('archive-strip')).toContainText(`${STAMPED}-day streak`)
+  await expect(page).toHaveURL(/\/$/)
+  await expect(page.getByTestId('archive-open')).toBeVisible()
   expect(errors).toEqual([])
 })
 

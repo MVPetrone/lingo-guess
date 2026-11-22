@@ -2,8 +2,8 @@
    START — the instrument boot screen
    Meaning is carried by icons: game parameters as pills, each level as a
    waveform plus icon facts. Prose is down to one hint line under the levels.
-   Daily card and archive strip live in their own files; the start-screen
-   layout of both is scoped here under .screen--start.
+   The daily card and the archive's side rail live in their own files; their
+   start-screen layout is scoped here under .screen--start.
    ========================================================================== */
 
 .screen--start {
@@ -26,7 +26,10 @@
   flex: none;
 }
 
+/* The fixed archive button (.side-rail) owns the top-right corner; the
+   wordmark keeps clear of it at every width, 320 px included. */
 .hero__title {
+  padding-inline-end: calc(var(--tap-min) + var(--s-3));
   font-size: clamp(1.75rem, 8.4vw, 3.4rem);
   line-height: 1.02;
   letter-spacing: -0.025em;
@@ -175,64 +178,6 @@
   color: var(--text-3);
 }
 
-/* ---- archive strip, start-screen layout: one line, calendar first ----------- */
-/* The strip's one-line meta must not widen the column. */
-.screen--start .start__daily {
-  grid-template-columns: minmax(0, 1fr);
-}
-
-.screen--start .archive-strip {
-  padding-inline-start: var(--s-4);
-  border-radius: var(--r-pill);
-}
-
-.archive-strip__icon {
-  flex: none;
-  width: var(--icon);
-  height: var(--icon);
-  color: var(--text-3);
-}
-
-.screen--start .archive-strip__text {
-  display: flex;
-  align-items: baseline;
-  gap: var(--s-3);
-  flex: 1;
-  min-width: 0;
-}
-
-.screen--start .archive-strip__meta {
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-/* Phones: the calendar stands in for the label and the button keeps only its
-   arrow (its text stays in the accessible name), so the meta gets the line. */
-@media (max-width: 39.99rem) {
-  .screen--start .archive-strip__label {
-    display: none;
-  }
-
-  .screen--start .archive-strip .btn {
-    width: var(--tap-min);
-    padding-inline: 0;
-  }
-
-  .archive-strip__btn-label {
-    position: absolute;
-    width: 1px;
-    height: 1px;
-    overflow: hidden;
-    clip-path: inset(50%);
-    white-space: nowrap;
-  }
-}
-
-.screen--start .archive-strip .btn {
-  border-radius: var(--r-pill);
-}
-
 /* ---- difficulty: a real radiogroup, drawn as cards ----------------------------- */
 .levels__legend {
   margin-bottom: var(--s-3);
@@ -276,8 +221,10 @@
 .level__glyph {
   display: block;
   width: auto;
-  height: var(--s-5);
-  color: var(--text-2);
+  /* 28px, not the 24px token step: at 16-18px the bars read as a smudge, and
+     the glyph is the card's whole visual argument. */
+  height: 1.75rem;
+  color: var(--text-1);
   transition: var(--t-ui);
 }
 

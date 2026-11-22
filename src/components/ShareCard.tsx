@@ -218,7 +218,7 @@ export function ShareCard({ today, streak, languages, days, onClose }: Props) {
     }
   }, [streak, languages, days])
 
-  const caption = shareCaption(streak, languages.length, days, `${window.location.origin}${import.meta.env.BASE_URL}?daily=1`)
+  const caption = shareCaption(streak, languages.length, days, `${window.location.origin}${import.meta.env.BASE_URL}daily`)
 
   const onShare = async () => {
     if (!png) return

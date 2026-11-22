@@ -6,6 +6,7 @@ import { HUD } from './components/HUD.tsx'
 import { KnowLanguages } from './components/KnowLanguages.tsx'
 import { Reveal } from './components/Reveal.tsx'
 import { Round } from './components/Round.tsx'
+import { SideRail } from './components/SideRail.tsx'
 import { StartScreen } from './components/StartScreen.tsx'
 import { LANGUAGES, type LangCode, type Language } from './data/languages.ts'
 import {
@@ -20,12 +21,13 @@ import {
   type Difficulty,
   type GameState,
 } from './engine/game.ts'
-import { addStamp, archiveStreak, collectedLanguages, stampFromDaily } from './engine/archive.ts'
+import { addStamp, stampFromDaily } from './engine/archive.ts'
 import { currentStreak, londonDateKey, type DailyRecord } from './engine/daily.ts'
 import { seedFromString } from './engine/rng.ts'
 import { useAudio } from './hooks/useAudio.ts'
 import { track, trackPageview } from './lib/analytics.ts'
 import { AmbientField, ScreenTransition } from './motion/index.ts'
+import { backOrHome, navigate, useRoute } from './router.ts'
 import {
   appendHeard,
   loadArchive,
@@ -66,19 +68,6 @@ function firstSeed(): number | null {
   return param ? seedFromString(param) : null
 }
 
-/** `?daily=1` opens the Daily Challenge directly, so a shared link lands on it. */
-function firstDaily(): boolean {
-  return new URLSearchParams(window.location.search).get('daily') === '1'
-}
-
-/** Drops `?daily=1` once the player leaves the challenge, so a reload stays on the menu. */
-function clearDailyParam() {
-  const url = new URL(window.location.href)
-  if (!url.searchParams.has('daily')) return
-  url.searchParams.delete('daily')
-  window.history.replaceState(null, '', url)
-}
-
 function randomSeed(): number {
   return crypto.getRandomValues(new Uint32Array(1))[0] ?? Date.now() >>> 0
 }
@@ -96,6 +85,7 @@ function clipUrl(code: string, voiceIndex: number, sentenceId: string): string {
 }
 
 export default function App() {
+  const route = useRoute()
   const [state, dispatch] = useReducer(reducer, { screen: 'start' })
   const [slow, setSlow] = useState(false)
   const [urlSeed, setUrlSeed] = useState(firstSeed)
@@ -108,28 +98,37 @@ export default function App() {
   // distractors). null = not asked yet, so the picker is shown first.
   const [known, setKnown] = useState(initialKnown)
   const [editingKnown, setEditingKnown] = useState(false)
-  const [daily, setDaily] = useState(firstDaily)
   const [dailyRecord, setDailyRecord] = useState(loadDaily)
   // Built from the daily record on first load, then stamped on each completed day.
   const [archive, setArchive] = useState(() => loadArchive(dailyRecord))
-  const [archiveOpen, setArchiveOpen] = useState(false)
   const pool = LANGUAGES.filter((l) => !known?.includes(l.code))
 
-  const game = state.screen === 'game' ? state.game : null
+  // The game only exists on /play: leaving the route (browser back) silences
+  // it on the very next render, before the effect below drops it.
+  const game = route.name === 'play' && state.screen === 'game' ? state.game : null
+
+  // /play with nothing in memory (a reload, a forward after back) goes home;
+  // any other route discards a game left behind.
+  useEffect(() => {
+    if (route.name === 'play' && state.screen !== 'game') navigate({ name: 'home' }, { replace: true })
+    if (route.name !== 'play' && state.screen === 'game') dispatch({ type: 'menu' })
+  }, [route.name, state.screen])
 
   // One key per screen type: a change remounts the frame and plays the
-  // enter transition. The ambient field lives outside it because a transform
-  // on the wrapper would trap position: fixed.
-  const screenKey = !game
-    ? archiveOpen
+  // enter transition. The ambient field and the side rail live outside it
+  // because a transform on the wrapper would trap position: fixed.
+  const screenKey = game
+    ? game.phase
+    : route.name === 'archive'
       ? 'archive'
       : known === null || editingKnown
-      ? 'know'
-      : 'start'
-    : game.phase
-  const frame = (screen: ReactNode) => (
+        ? 'know'
+        : 'start'
+  // `fixed` comes before the screen so it is the first tab stop, like a header.
+  const frame = (screen: ReactNode, fixed?: ReactNode) => (
     <>
       <AmbientField intensity={0.5} />
+      {fixed}
       <ScreenTransition screenKey={screenKey}>{screen}</ScreenTransition>
     </>
   )
@@ -150,10 +149,10 @@ export default function App() {
     setRate(slowActive ? SLOW_RATE : 1)
   }, [slowActive, setRate])
 
-  // One pageview per mount; the collector filters crawlers and dedupes by id.
+  // One pageview per route; the collector filters crawlers and dedupes by id.
   useEffect(() => {
     trackPageview()
-  }, [])
+  }, [route.name])
 
   // Round timing for the "how long does a guess take" panel.
   const roundStartedAt = useRef(0)
@@ -183,7 +182,8 @@ export default function App() {
     track('game_over', { score: game.score, difficulty: game.difficulty })
   }, [game])
 
-  const start = (difficulty: Difficulty) => {
+  /** `replace` when arriving from another sub-route, so back still means home. */
+  const start = (difficulty: Difficulty, opts: { replace?: boolean } = {}) => {
     track('game_start', { difficulty })
     // A ?seed= game ignores the memory so the seed alone determines it.
     dispatch({
@@ -194,6 +194,7 @@ export default function App() {
       heard: urlSeed === null ? heard : [],
     })
     setUrlSeed(null)
+    navigate({ name: 'play' }, opts)
   }
 
   const answer = (index: number | null) => {
@@ -226,11 +227,6 @@ export default function App() {
     setEditingKnown(false)
   }
 
-  const leaveDaily = () => {
-    clearDailyParam()
-    setDaily(false)
-  }
-
   // Completing a day stamps the archive. addStamp ignores a date already
   // stamped, so a second finish (or a stale tab) never rewrites the day.
   const recordDaily = (record: DailyRecord, date: string) => {
@@ -243,37 +239,32 @@ export default function App() {
     }
   }
 
+  // Moves between sub-routes replace the entry, so back from any of them is home.
   // The daily is the same for everyone, so it skips the known-languages
   // picker; a shared link plays straight away.
-  if (!game && daily) {
+  if (route.name === 'daily') {
     return (
       <DailyChallenge
         record={dailyRecord}
         onRecord={recordDaily}
-        onBack={leaveDaily}
-        onArchive={() => {
-          leaveDaily()
-          setArchiveOpen(true)
-        }}
+        onBack={backOrHome}
+        onArchive={() => navigate({ name: 'archive' }, { replace: true })}
         onPlayNormal={() => {
-          leaveDaily()
-          if (known !== null && pool.length >= MIN_POOL) start('normal')
+          if (known !== null && pool.length >= MIN_POOL) start('normal', { replace: true })
+          else navigate({ name: 'home' }, { replace: true })
         }}
       />
     )
   }
 
-  if (!game && archiveOpen) {
+  if (route.name === 'archive') {
     return frame(
       <Archive
         archive={archive}
         today={londonDateKey()}
         onArchiveChange={setArchive}
-        onPlayDaily={() => {
-          setArchiveOpen(false)
-          setDaily(true)
-        }}
-        onBack={() => setArchiveOpen(false)}
+        onPlayDaily={() => navigate({ name: 'daily' }, { replace: true })}
+        onBack={backOrHome}
       />,
     )
   }
@@ -303,14 +294,9 @@ export default function App() {
           streak: currentStreak(dailyRecord, today),
           result: dailyRecord?.results[today] ?? null,
         }}
-        onDaily={() => setDaily(true)}
-        archive={{
-          streak: archiveStreak(archive, today),
-          languages: collectedLanguages(archive).length,
-          days: Object.keys(archive.stamps).length,
-        }}
-        onArchive={() => setArchiveOpen(true)}
+        onDaily={() => navigate({ name: 'daily' })}
       />,
+      <SideRail onArchive={() => navigate({ name: 'archive' })} />,
     )
   }
 
@@ -322,7 +308,7 @@ export default function App() {
         isNewBest={isNewBest}
         shareUrl={window.location.origin + import.meta.env.BASE_URL}
         onPlayAgain={() => start(game.difficulty)}
-        onMenu={() => dispatch({ type: 'menu' })}
+        onMenu={backOrHome}
       />,
     )
   }
