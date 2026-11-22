@@ -40,6 +40,76 @@ const PATHS = {
       <path d="M12 10v4.5M12 17.2v.3" />
     </>
   ),
+  heart: (
+    <path
+      d="M12 19.5s-7.5-4.6-7.5-10.1A4.1 4.1 0 0 1 12 7a4.1 4.1 0 0 1 7.5 2.4c0 5.5-7.5 10.1-7.5 10.1z"
+      fill="currentColor"
+    />
+  ),
+  globe: (
+    <>
+      <circle cx="12" cy="12" r="8.5" />
+      <path d="M3.5 12h17" />
+      <path d="M12 3.5c2.3 2.4 3.5 5.2 3.5 8.5s-1.2 6.1-3.5 8.5c-2.3-2.4-3.5-5.2-3.5-8.5s1.2-6.1 3.5-8.5z" />
+    </>
+  ),
+  keyboard: (
+    <>
+      <rect x="3" y="6" width="18" height="12" rx="2" />
+      <path d="M7 10h.01M10.3 10h.01M13.7 10h.01M17 10h.01M8 14h8" />
+    </>
+  ),
+  users: (
+    <>
+      <circle cx="9" cy="8.5" r="3" />
+      <path d="M3.5 19a5.5 5.5 0 0 1 11 0" />
+      <path d="M15.5 5.6a3 3 0 0 1 0 5.8M17.5 14.2a5.5 5.5 0 0 1 3 4.8" />
+    </>
+  ),
+  star: <path d="M12 4l2.4 5 5.4.7-4 3.7 1 5.4-4.8-2.6-4.8 2.6 1-5.4-4-3.7 5.4-.7z" />,
+  /** Two dashes: a clip's length, drawn as a line of speech. */
+  'short-clips': <path d="M5 9.5h14M5 14.5h9" />,
+  'plus-circle': (
+    <>
+      <circle cx="12" cy="12" r="8.5" />
+      <path d="M12 8.5v7M8.5 12h7" />
+    </>
+  ),
+  /** Two offset squares: languages that look like each other. */
+  'look-alikes': (
+    <>
+      <rect x="4" y="8.5" width="11.5" height="11.5" rx="2" />
+      <path d="M8.5 4h9.5a2 2 0 0 1 2 2v9.5" />
+    </>
+  ),
+  diamond: <path d="M12 3.5l8.5 8.5-8.5 8.5L3.5 12z" />,
+  choices: <path d="M9.5 7H20M9.5 12H20M9.5 17H20M4.5 7h.01M4.5 12h.01M4.5 17h.01" />,
+  speed: <path d="M5.5 6l6 6-6 6M12.5 6l6 6-6 6" />,
+  'check-circle': (
+    <>
+      <circle cx="12" cy="12" r="8.5" />
+      <path d="M8.3 12.4l2.6 2.6 4.8-5.2" />
+    </>
+  ),
+  trophy: (
+    <>
+      <path d="M8 4.5h8v4.5a4 4 0 0 1-8 0z" />
+      <path d="M8 6.5H5.5a2.6 2.6 0 0 0 3 3.6M16 6.5h2.5a2.6 2.6 0 0 1-3 3.6" />
+      <path d="M12 13v4M8.5 20h7M9.5 17h5" />
+    </>
+  ),
+  speaker: (
+    <>
+      <path d="M4 9.5h3.5L12 5.5v13l-4.5-4H4z" />
+      <path d="M15.5 9.2a4 4 0 0 1 0 5.6M18 6.7a7.5 7.5 0 0 1 0 10.6" />
+    </>
+  ),
+  calendar: (
+    <>
+      <rect x="4" y="5.5" width="16" height="14.5" rx="2" />
+      <path d="M4 10h16M8.5 3.5v4M15.5 3.5v4" />
+    </>
+  ),
 } as const
 
 export type IconName = keyof typeof PATHS
