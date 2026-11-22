@@ -97,9 +97,13 @@ function ArchiveStrip({ archive, onArchive }: Pick<Props, 'archive' | 'onArchive
       <p className="archive-strip__text">
         <span className="eyebrow archive-strip__label">Your archive</span>
         <span className="archive-strip__meta">
+          {/* "0-day streak" reads like a bug and demoralises; when the run has
+              broken, lead with what the player still owns. */}
           {days === 0
             ? 'Each finished daily stamps a square'
-            : `${streak}-day streak · ${languages} language${languages === 1 ? '' : 's'} collected`}
+            : streak > 0
+              ? `${streak}-day streak · ${languages} language${languages === 1 ? '' : 's'}`
+              : `${days} days stamped · ${languages} language${languages === 1 ? '' : 's'}`}
         </span>
       </p>
       <button type="button" className="btn btn--ghost btn--sm" onClick={onArchive} data-testid="archive-open">
@@ -133,7 +137,12 @@ function DailyCard({ daily, onDaily }: Pick<Props, 'daily' | 'onDaily'>) {
     >
       <DateBadge date={date} />
       <span className="daily-card__body">
-        <span className="eyebrow daily-card__eyebrow">Daily Challenge</span>
+        {/* The streak rides the eyebrow line, not the meta row: on a phone the
+            facts wrap there and would strand the streak on a line of its own. */}
+        <span className="daily-card__head">
+          <span className="eyebrow daily-card__eyebrow">Daily Challenge</span>
+          {streak > 0 && <span className="daily-card__streak">{streak}-day streak</span>}
+        </span>
         <span className="daily-card__meta">
           {result ? (
             <>
@@ -154,7 +163,6 @@ function DailyCard({ daily, onDaily }: Pick<Props, 'daily' | 'onDaily'>) {
               </span>
             </>
           )}
-          {streak > 0 && <span className="daily-card__streak">{streak}-day streak</span>}
         </span>
       </span>
       <Icon name={result ? 'check' : 'arrow'} className="daily-card__icon" />

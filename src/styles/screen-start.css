@@ -134,6 +134,15 @@
   gap: var(--s-2);
 }
 
+/* Eyebrow on the left, streak on the right: never a stranded third line. */
+.daily-card__head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--s-2);
+  min-width: 0;
+}
+
 .screen--start .daily-card__meta {
   align-items: center;
 }
@@ -233,6 +242,9 @@
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: var(--s-2);
+  /* Equal rows: Expert carries three meta lines, and a ragged 2 × 2 grid reads
+     as a layout bug rather than a hierarchy. */
+  grid-auto-rows: 1fr;
 }
 
 @media (max-width: 23.74rem) {
