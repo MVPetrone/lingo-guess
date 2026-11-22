@@ -219,9 +219,6 @@ export function Archive({ archive, today, onArchiveChange, onPlayDaily, onBack }
               Export
             </button>
           )}
-          <button type="button" className="btn btn--ghost" onClick={() => fileRef.current?.click()}>
-            Import
-          </button>
           <input
             ref={fileRef}
             className="archive-foot__file"
@@ -238,9 +235,13 @@ export function Archive({ archive, today, onArchiveChange, onPlayDaily, onBack }
             (imported.added > 0 ? `Imported ${plural(imported.added, 'new day')}.` : 'Nothing new in that file.')}
           {imported.kind === 'failed' && 'That file isn’t a Lingo Guess archive.'}
         </p>
-        {/* No accounts: say plainly where the record lives. */}
+        {/* No accounts: say plainly where the record lives. Import is a quiet
+            link here, not a third button — restoring is the rare case. */}
         <p className="archive-foot__note">
-          Stored on this device only. Export a copy to keep it if you clear your browser or change phone.
+          <span>Stored on this device only. Export a copy to keep it if you clear your browser or change phone.</span>
+          <button type="button" className="link link--quiet" onClick={() => fileRef.current?.click()}>
+            Import a copy
+          </button>
         </p>
         <button type="button" className="link link--quiet archive-foot__back" onClick={onBack} data-testid="archive-back">
           Back to menu

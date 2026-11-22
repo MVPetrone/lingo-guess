@@ -360,6 +360,11 @@
 .archive-foot__note {
   color: var(--text-3);
   font-size: var(--fs-small);
+  /* The note ends in a link; grid keeps it from dangling mid-sentence at
+     phone width. */
+  display: grid;
+  gap: var(--s-1);
+  justify-items: start;
 }
 
 .archive-foot__back {
@@ -432,17 +437,33 @@
 
 /* ---- wider screens ---------------------------------------------------------------------- */
 @media (min-width: 48rem) {
+  /* The calendar is the product, so it earns the width: 46rem keeps seven
+     columns near 90px, which is what makes the flags readable rather than
+     decorative. Phone keeps the 520px column. */
+  .screen--archive {
+    max-width: 46rem;
+  }
+
   .archive-month {
-    padding: var(--s-4);
+    padding: var(--s-5);
   }
 
   .archive-grid {
     gap: var(--s-2);
   }
 
-  /* The screen caps at 520px, so cells barely grow: more air, same flags. */
+  /* Bigger cells, bigger flags: 28px each so a 2 × 2 block fills the tile. */
   .archive-cell {
-    min-height: 4rem;
+    min-height: 5.25rem;
+  }
+
+  .archive-cell__flags {
+    grid-template-columns: repeat(2, 28px);
+    gap: 3px;
+  }
+
+  .archive-cell .archive-cell__flag {
+    width: 28px;
   }
 
   .archive-cell__btn {
